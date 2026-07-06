@@ -31,18 +31,20 @@ public class MergeRerankNode {
     public Map<String, Object> execute(ResearchState state) {
         Instant startedAt = Instant.now();
         String taskId = state.taskId();
-        taskProgressPublisher.publish(taskId, "mergeRerank", "RUNNING", "Merging evidences", Map.of());
+        taskProgressPublisher.publish(taskId, "mergeRerank", "RUNNING", "Merging and reranking evidences", Map.of());
         try {
             List<Evidence> merged = new ArrayList<>();
             merged.addAll(state.internalEvidences());
             merged.addAll(state.externalEvidences());
-            List<Evidence> reranked = rerankTool.rerank(merged);
+            List<Evidence> reranked = rerankTool.rerank(taskId, "mergeRerank", merged);
+            Map<String, Object> metrics = Map.of("retrievalCount", reranked.size());
+
             Map<String, Object> output = new LinkedHashMap<>();
             output.put(ResearchState.MERGED_EVIDENCES, reranked);
             output.put(ResearchState.STATUS, "EVIDENCE_READY");
-            output.put(ResearchState.METRICS, Map.of("retrievalCount", reranked.size()));
+            output.put(ResearchState.METRICS, metrics);
             output.put(ResearchState.TIMELINE, List.of("mergeRerank completed"));
-            agentRunLogService.logSuccess(taskId, "mergeRerank", startedAt, reranked, "Merged and reranked evidence");
+            agentRunLogService.logSuccess(taskId, "mergeRerank", startedAt, reranked, "Merged and reranked evidence", metrics);
             taskProgressPublisher.publish(taskId, "mergeRerank", "COMPLETED", "Evidence merged", Map.of(
                     "evidenceCount", reranked.size()
             ));

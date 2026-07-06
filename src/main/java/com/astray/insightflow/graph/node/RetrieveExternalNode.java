@@ -1,10 +1,11 @@
 package com.astray.insightflow.graph.node;
 
+import com.astray.insightflow.common.util.MetricsUtils;
 import com.astray.insightflow.graph.state.ResearchState;
 import com.astray.insightflow.observe.service.AgentRunLogService;
 import com.astray.insightflow.retrieval.model.Evidence;
-import com.astray.insightflow.retrieval.service.ExternalRetrievalService;
 import com.astray.insightflow.task.service.TaskProgressPublisher;
+import com.astray.insightflow.tool.WebSearchTool;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -15,14 +16,14 @@ import java.util.Map;
 @Component
 public class RetrieveExternalNode {
 
-    private final ExternalRetrievalService externalRetrievalService;
+    private final WebSearchTool webSearchTool;
     private final TaskProgressPublisher taskProgressPublisher;
     private final AgentRunLogService agentRunLogService;
 
-    public RetrieveExternalNode(ExternalRetrievalService externalRetrievalService,
+    public RetrieveExternalNode(WebSearchTool webSearchTool,
                                 TaskProgressPublisher taskProgressPublisher,
                                 AgentRunLogService agentRunLogService) {
-        this.externalRetrievalService = externalRetrievalService;
+        this.webSearchTool = webSearchTool;
         this.taskProgressPublisher = taskProgressPublisher;
         this.agentRunLogService = agentRunLogService;
     }
@@ -30,18 +31,23 @@ public class RetrieveExternalNode {
     public Map<String, Object> execute(ResearchState state) {
         Instant startedAt = Instant.now();
         String taskId = state.taskId();
-        taskProgressPublisher.publish(taskId, "retrieveExternal", "RUNNING", "External retrieval placeholder started", Map.of(
+        taskProgressPublisher.publish(taskId, "retrieveExternal", "RUNNING", "External retrieval started", Map.of(
                 "enabled", state.needExternalSearch()
         ));
         try {
-            List<Evidence> evidences = externalRetrievalService.search(taskId, state.subQueries(), state.needExternalSearch());
+            List<Evidence> evidences = webSearchTool.search(taskId, "retrieveExternal", state.subQueries(), state.needExternalSearch());
+            Map<String, Object> metrics = Map.of(
+                    "tokenUsage", MetricsUtils.estimateTokens(String.join(" ", state.subQueries())),
+                    "retrievalCount", evidences.size()
+            );
+
             Map<String, Object> output = new LinkedHashMap<>();
             output.put(ResearchState.EXTERNAL_EVIDENCES, evidences);
             output.put(ResearchState.STATUS, "EXTERNAL_RETRIEVED");
-            output.put(ResearchState.METRICS, Map.of("externalRetrievalCount", evidences.size()));
+            output.put(ResearchState.METRICS, metrics);
             output.put(ResearchState.TIMELINE, List.of("retrieveExternal completed"));
-            agentRunLogService.logSuccess(taskId, "retrieveExternal", startedAt, evidences, "External retrieval placeholder completed");
-            taskProgressPublisher.publish(taskId, "retrieveExternal", "COMPLETED", "External retrieval placeholder completed", Map.of(
+            agentRunLogService.logSuccess(taskId, "retrieveExternal", startedAt, evidences, "External evidence retrieved", metrics);
+            taskProgressPublisher.publish(taskId, "retrieveExternal", "COMPLETED", "External retrieval completed", Map.of(
                     "evidenceCount", evidences.size()
             ));
             return output;

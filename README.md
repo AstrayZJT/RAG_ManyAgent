@@ -1,16 +1,17 @@
 # InsightFlow
 
-InsightFlow 是一个面向行业研究与竞品分析的多 Agent 智能分析平台骨架项目。当前实现为 Phase 1 最小可运行版本，重点跑通：
+InsightFlow 是一个面向行业研究与竞品分析的多 Agent 智能分析平台骨架项目。当前已实现 Phase 2 骨架，重点跑通：
 
-`任务创建 -> planner -> retrievalSubgraph -> write -> report 输出`
+`任务创建 -> planner -> retrievalSubgraph -> extract -> verify -> write -> review -> report 输出`
 
 ## 已包含能力
 
 - Spring Boot REST API + SSE 进度流
-- LangChain4j Planner/Writer Agent（无 API Key 时自动降级为本地 stub）
-- LangGraph4j 主图骨架与 retrieval 子流程
+- LangChain4j Planner / Extractor / Verifier / Writer / Reviewer Agent（无 API Key 时自动降级为本地 stub）
+- LangGraph4j 主图骨架、条件路由与回退重试
 - 文档上传、切片、索引、内部检索
-- 结构化任务计划、证据记录、报告草稿、节点运行日志持久化
+- 结构化任务计划、事实抽取、claim 验证、报告审查
+- agent_run_log / tool_call_log / timeline / citationCoverage 等基础观测
 
 ## 运行方式
 
@@ -40,6 +41,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=postgres
 - `POST /api/tasks/{id}/run`
 - `GET /api/tasks/{id}`
 - `GET /api/tasks/{id}/report`
+- `GET /api/tasks/{id}/timeline`
 - `GET /api/tasks/{id}/stream`
 - `POST /api/documents/upload`
 - `POST /api/documents/{id}/index`
@@ -51,4 +53,5 @@ mvn spring-boot:run -Dspring-boot.run.profiles=postgres
 3. 调用 `/api/tasks` 创建任务
 4. 调用 `/api/tasks/{id}/run` 启动图执行
 5. 用 `/api/tasks/{id}/stream` 观察节点进度
-6. 用 `/api/tasks/{id}/report` 查看生成的报告
+6. 用 `/api/tasks/{id}/timeline` 查看节点、工具与指标轨迹
+7. 用 `/api/tasks/{id}/report` 查看生成的报告

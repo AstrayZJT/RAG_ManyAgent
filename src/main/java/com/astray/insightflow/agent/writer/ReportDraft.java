@@ -11,6 +11,7 @@ public class ReportDraft implements Serializable {
     private List<ReportSection> sections = new ArrayList<>();
     private String closingSummary;
     private String confidenceNote;
+    private String reviewSummary;
 
     public ReportDraft() {
     }
@@ -53,5 +54,13 @@ public class ReportDraft implements Serializable {
 
     public void setConfidenceNote(String confidenceNote) {
         this.confidenceNote = confidenceNote;
+    }
+
+    public String getReviewSummary() {
+        return reviewSummary;
+    }
+
+    public void setReviewSummary(String reviewSummary) {
+        this.reviewSummary = reviewSummary;
     }
 }

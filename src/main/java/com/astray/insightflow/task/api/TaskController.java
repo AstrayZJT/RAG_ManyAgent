@@ -3,6 +3,8 @@ package com.astray.insightflow.task.api;
 import com.astray.insightflow.agent.planner.PlanResult;
 import com.astray.insightflow.common.util.JsonUtils;
 import com.astray.insightflow.graph.TaskGraphExecutor;
+import com.astray.insightflow.observe.api.TaskTimelineResponse;
+import com.astray.insightflow.observe.service.TaskTimelineService;
 import com.astray.insightflow.report.api.ReportResponse;
 import com.astray.insightflow.report.service.ReportService;
 import com.astray.insightflow.task.domain.ResearchTask;
@@ -28,17 +30,20 @@ public class TaskController {
     private final TaskGraphExecutor taskGraphExecutor;
     private final TaskProgressPublisher taskProgressPublisher;
     private final ReportService reportService;
+    private final TaskTimelineService taskTimelineService;
     private final JsonUtils jsonUtils;
 
     public TaskController(TaskService taskService,
                           TaskGraphExecutor taskGraphExecutor,
                           TaskProgressPublisher taskProgressPublisher,
                           ReportService reportService,
+                          TaskTimelineService taskTimelineService,
                           JsonUtils jsonUtils) {
         this.taskService = taskService;
         this.taskGraphExecutor = taskGraphExecutor;
         this.taskProgressPublisher = taskProgressPublisher;
         this.reportService = reportService;
+        this.taskTimelineService = taskTimelineService;
         this.jsonUtils = jsonUtils;
     }
 
@@ -96,5 +101,10 @@ public class TaskController {
     public SseEmitter stream(@PathVariable("id") String taskId) {
         taskService.getTask(taskId);
         return taskProgressPublisher.subscribe(taskId);
+    }
+
+    @GetMapping("/{id}/timeline")
+    public ResponseEntity<TaskTimelineResponse> getTimeline(@PathVariable("id") String taskId) {
+        return ResponseEntity.ok(taskTimelineService.getTimeline(taskId));
     }
 }

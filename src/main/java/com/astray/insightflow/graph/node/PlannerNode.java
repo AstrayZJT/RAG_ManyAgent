@@ -3,6 +3,7 @@ package com.astray.insightflow.graph.node;
 import com.astray.insightflow.agent.planner.PlanResult;
 import com.astray.insightflow.agent.planner.PlannerAgent;
 import com.astray.insightflow.common.util.JsonUtils;
+import com.astray.insightflow.common.util.MetricsUtils;
 import com.astray.insightflow.graph.state.ResearchState;
 import com.astray.insightflow.observe.service.AgentRunLogService;
 import com.astray.insightflow.task.domain.TaskPlanEntity;
@@ -53,14 +54,21 @@ public class PlannerNode {
             entity.setUpdatedAt(Instant.now());
             taskPlanRepository.save(entity);
 
+            Map<String, Object> metrics = Map.of(
+                    "tokenUsage", MetricsUtils.estimateTokens(state.userQuery(), jsonUtils.toJson(plan)),
+                    "retrievalCount", 0,
+                    "citationCoverage", 0D
+            );
+
             Map<String, Object> output = new LinkedHashMap<>();
             output.put(ResearchState.PLAN, plan);
             output.put(ResearchState.SUB_QUERIES, plan.getSubQueries());
             output.put(ResearchState.NEED_EXTERNAL_SEARCH, plan.isNeedExternalSearch());
+            output.put(ResearchState.LOOP_COUNT, 0);
             output.put(ResearchState.STATUS, "PLANNED");
-            output.put(ResearchState.METRICS, Map.of("retrievalCount", 0));
+            output.put(ResearchState.METRICS, metrics);
             output.put(ResearchState.TIMELINE, List.of("planner completed"));
-            agentRunLogService.logSuccess(taskId, "planner", startedAt, plan, "Planner produced structured plan");
+            agentRunLogService.logSuccess(taskId, "planner", startedAt, plan, "Planner produced structured plan", metrics);
             taskProgressPublisher.publish(taskId, "planner", "COMPLETED", "Planner node completed", Map.of(
                     "subQueries", plan.getSubQueries().size(),
                     "needExternalSearch", plan.isNeedExternalSearch()

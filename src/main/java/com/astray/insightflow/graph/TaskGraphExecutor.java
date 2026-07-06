@@ -49,6 +49,7 @@ public class TaskGraphExecutor {
             inputs.put(ResearchState.TASK_ID, taskId);
             inputs.put(ResearchState.USER_QUERY, task.getQueryText());
             inputs.put(ResearchState.LANGUAGE, task.getLanguage());
+            inputs.put(ResearchState.LOOP_COUNT, 0);
             inputs.put(ResearchState.STATUS, "RUNNING");
 
             compiledGraph.invoke(inputs, config)

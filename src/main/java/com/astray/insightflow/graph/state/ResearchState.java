@@ -1,6 +1,10 @@
 package com.astray.insightflow.graph.state;
 
+import com.astray.insightflow.agent.extractor.ExtractedFact;
 import com.astray.insightflow.agent.planner.PlanResult;
+import com.astray.insightflow.agent.reviewer.ReviewResult;
+import com.astray.insightflow.agent.verifier.VerifiedClaim;
+import com.astray.insightflow.agent.verifier.VerifyDecision;
 import com.astray.insightflow.agent.writer.ReportDraft;
 import com.astray.insightflow.retrieval.model.Evidence;
 import org.bsc.langgraph4j.state.AgentState;
@@ -26,7 +30,12 @@ public class ResearchState extends AgentState implements Serializable {
     public static final String INTERNAL_EVIDENCES = "internalEvidences";
     public static final String EXTERNAL_EVIDENCES = "externalEvidences";
     public static final String MERGED_EVIDENCES = "mergedEvidences";
+    public static final String FACTS = "facts";
+    public static final String CLAIMS = "claims";
+    public static final String VERIFY_DECISION = "verifyDecision";
     public static final String REPORT_DRAFT = "reportDraft";
+    public static final String REVIEW_RESULT = "reviewResult";
+    public static final String LOOP_COUNT = "loopCount";
     public static final String STATUS = "status";
     public static final String METRICS = "metrics";
     public static final String TIMELINE = "timeline";
@@ -41,7 +50,12 @@ public class ResearchState extends AgentState implements Serializable {
             entry(INTERNAL_EVIDENCES, Channels.base((current, incoming) -> incoming)),
             entry(EXTERNAL_EVIDENCES, Channels.base((current, incoming) -> incoming)),
             entry(MERGED_EVIDENCES, Channels.base((current, incoming) -> incoming)),
+            entry(FACTS, Channels.base((current, incoming) -> incoming)),
+            entry(CLAIMS, Channels.base((current, incoming) -> incoming)),
+            entry(VERIFY_DECISION, Channels.base((current, incoming) -> incoming)),
             entry(REPORT_DRAFT, Channels.base((current, incoming) -> incoming)),
+            entry(REVIEW_RESULT, Channels.base((current, incoming) -> incoming)),
+            entry(LOOP_COUNT, Channels.base((current, incoming) -> incoming)),
             entry(STATUS, Channels.base((current, incoming) -> incoming)),
             entry(METRICS, Channels.base(ResearchState::mergeMetrics)),
             entry(TIMELINE, Channels.base(ResearchState::mergeTimeline))
@@ -87,8 +101,28 @@ public class ResearchState extends AgentState implements Serializable {
         return this.<List<Evidence>>value(MERGED_EVIDENCES).orElseGet(ArrayList::new);
     }
 
+    public List<ExtractedFact> facts() {
+        return this.<List<ExtractedFact>>value(FACTS).orElseGet(ArrayList::new);
+    }
+
+    public List<VerifiedClaim> claims() {
+        return this.<List<VerifiedClaim>>value(CLAIMS).orElseGet(ArrayList::new);
+    }
+
+    public VerifyDecision verifyDecision() {
+        return this.<VerifyDecision>value(VERIFY_DECISION).orElse(new VerifyDecision());
+    }
+
     public ReportDraft reportDraft() {
         return this.<ReportDraft>value(REPORT_DRAFT).orElse(new ReportDraft());
+    }
+
+    public ReviewResult reviewResult() {
+        return this.<ReviewResult>value(REVIEW_RESULT).orElse(new ReviewResult());
+    }
+
+    public int loopCount() {
+        return this.<Integer>value(LOOP_COUNT).orElse(0);
     }
 
     public String status() {

@@ -3,6 +3,9 @@
 研究计划 JSON：
 {{planJson}}
 
+已验证 claims JSON：
+{{claimsJson}}
+
 证据 JSON：
 {{evidenceJson}}
 

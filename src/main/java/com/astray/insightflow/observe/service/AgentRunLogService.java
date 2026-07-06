@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -22,18 +23,22 @@ public class AgentRunLogService {
     }
 
     public void logSuccess(String taskId, String nodeName, Instant startedAt, Object output, String message) {
-        save(taskId, nodeName, "SUCCESS", startedAt, output, message);
+        save(taskId, nodeName, "SUCCESS", startedAt, output, message, Map.of());
+    }
+
+    public void logSuccess(String taskId, String nodeName, Instant startedAt, Object output, String message, Map<String, Object> metrics) {
+        save(taskId, nodeName, "SUCCESS", startedAt, output, message, metrics);
     }
 
     public void logFailure(String taskId, String nodeName, Instant startedAt, Exception exception) {
-        save(taskId, nodeName, "FAILED", startedAt, null, exception.getMessage());
+        save(taskId, nodeName, "FAILED", startedAt, null, exception.getMessage(), Map.of());
     }
 
     public List<AgentRunLog> getTaskLogs(String taskId) {
         return agentRunLogRepository.findByTaskIdOrderByStartedAtAsc(taskId);
     }
 
-    private void save(String taskId, String nodeName, String status, Instant startedAt, Object output, String message) {
+    private void save(String taskId, String nodeName, String status, Instant startedAt, Object output, String message, Map<String, Object> metrics) {
         AgentRunLog log = new AgentRunLog();
         log.setId(UUID.randomUUID().toString());
         log.setTaskId(taskId);
@@ -41,6 +46,7 @@ public class AgentRunLogService {
         log.setStatus(status);
         log.setMessage(message);
         log.setOutputJson(output == null ? null : jsonUtils.toJson(output));
+        log.setMetricsJson(metrics == null || metrics.isEmpty() ? null : jsonUtils.toJson(metrics));
         log.setStartedAt(startedAt);
         log.setEndedAt(Instant.now());
         log.setLatencyMs(Duration.between(startedAt, log.getEndedAt()).toMillis());

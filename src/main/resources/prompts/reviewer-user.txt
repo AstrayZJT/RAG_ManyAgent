@@ -1,0 +1,14 @@
+研究目标：{{query}}
+输出语言：{{language}}
+当前循环次数：{{loopCount}}
+
+报告 JSON：
+{{reportJson}}
+
+claims JSON：
+{{claimsJson}}
+
+证据 JSON：
+{{evidenceJson}}
+
+请输出结构化 ReviewResult。

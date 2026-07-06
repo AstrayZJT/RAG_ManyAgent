@@ -49,7 +49,11 @@ public class ReportService {
         builder.append("## Executive Summary\n");
         builder.append(draft.getExecutiveSummary()).append("\n\n");
         for (ReportSection section : draft.getSections()) {
-            builder.append("## ").append(section.getHeading()).append("\n");
+            builder.append("## ").append(section.getHeading());
+            if (section.isLowConfidence()) {
+                builder.append(" [Low Confidence]");
+            }
+            builder.append("\n");
             builder.append(section.getContent()).append("\n");
             if (!section.getEvidenceIds().isEmpty()) {
                 builder.append("引用：").append(String.join(", ", section.getEvidenceIds())).append("\n");
@@ -59,6 +63,9 @@ public class ReportService {
         builder.append("## Conclusion\n");
         builder.append(draft.getClosingSummary()).append("\n\n");
         builder.append("置信度说明：").append(draft.getConfidenceNote()).append("\n");
+        if (draft.getReviewSummary() != null && !draft.getReviewSummary().isBlank()) {
+            builder.append("审查结论：").append(draft.getReviewSummary()).append("\n");
+        }
         return builder.toString();
     }
 }

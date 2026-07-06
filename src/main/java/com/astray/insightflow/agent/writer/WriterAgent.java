@@ -12,6 +12,7 @@ public interface WriterAgent {
             @V("query") String query,
             @V("language") String language,
             @V("planJson") String planJson,
+            @V("claimsJson") String claimsJson,
             @V("evidenceJson") String evidenceJson
     );
 }

@@ -3,6 +3,7 @@ package com.astray.insightflow.graph.node;
 import com.astray.insightflow.agent.writer.ReportDraft;
 import com.astray.insightflow.agent.writer.WriterAgent;
 import com.astray.insightflow.common.util.JsonUtils;
+import com.astray.insightflow.common.util.MetricsUtils;
 import com.astray.insightflow.graph.state.ResearchState;
 import com.astray.insightflow.observe.service.AgentRunLogService;
 import com.astray.insightflow.report.service.ReportService;
@@ -39,19 +40,26 @@ public class WriteNode {
         Instant startedAt = Instant.now();
         String taskId = state.taskId();
         taskProgressPublisher.publish(taskId, "write", "RUNNING", "Writer node started", Map.of(
-                "evidenceCount", state.mergedEvidences().size()
+                "claimCount", state.claims().size()
         ));
         try {
             String planJson = jsonUtils.toJson(state.plan());
+            String claimsJson = jsonUtils.toJson(Map.of("items", state.claims()));
             String evidenceJson = jsonUtils.toJson(Map.of("items", state.mergedEvidences()));
-            ReportDraft draft = writerAgent.write(state.userQuery(), state.language(), planJson, evidenceJson);
+            ReportDraft draft = writerAgent.write(state.userQuery(), state.language(), planJson, claimsJson, evidenceJson);
             reportService.save(taskId, draft);
+
+            Map<String, Object> metrics = Map.of(
+                    "tokenUsage", MetricsUtils.estimateTokens(planJson, claimsJson, evidenceJson),
+                    "citationCoverage", MetricsUtils.citationCoverage(state.claims())
+            );
 
             Map<String, Object> output = new LinkedHashMap<>();
             output.put(ResearchState.REPORT_DRAFT, draft);
             output.put(ResearchState.STATUS, "REPORT_DRAFTED");
+            output.put(ResearchState.METRICS, metrics);
             output.put(ResearchState.TIMELINE, List.of("write completed"));
-            agentRunLogService.logSuccess(taskId, "write", startedAt, draft, "Writer produced report draft");
+            agentRunLogService.logSuccess(taskId, "write", startedAt, draft, "Writer produced report draft", metrics);
             taskProgressPublisher.publish(taskId, "write", "COMPLETED", "Writer node completed", Map.of(
                     "title", draft.getTitle()
             ));

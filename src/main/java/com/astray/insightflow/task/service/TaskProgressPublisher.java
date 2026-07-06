@@ -37,6 +37,10 @@ public class TaskProgressPublisher {
         emitters.getOrDefault(taskId, new CopyOnWriteArrayList<>()).forEach(emitter -> sendEvent(emitter, event));
     }
 
+    public List<TaskProgressEvent> history(String taskId) {
+        return List.copyOf(eventHistory.getOrDefault(taskId, List.of()));
+    }
+
     private void sendEvent(SseEmitter emitter, TaskProgressEvent event) {
         try {
             emitter.send(SseEmitter.event()

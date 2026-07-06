@@ -10,6 +10,7 @@ import com.astray.insightflow.retrieval.domain.EvidenceSourceType;
 import com.astray.insightflow.retrieval.model.Evidence;
 import com.astray.insightflow.retrieval.persistence.EvidenceRecordRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ public class InternalRetrievalService {
         this.maxResults = agentProperties.search().maxResults();
     }
 
+    @Transactional
     public List<Evidence> search(String taskId, List<String> queries) {
         Map<String, KnowledgeDocument> documentMap = new HashMap<>();
         for (KnowledgeDocument document : knowledgeDocumentRepository.findAll()) {

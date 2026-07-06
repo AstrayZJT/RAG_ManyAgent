@@ -1,0 +1,9 @@
+研究目标：{{query}}
+输出语言：{{language}}
+研究计划 JSON：
+{{planJson}}
+
+证据 JSON：
+{{evidenceJson}}
+
+请直接输出提取到的事实数组。

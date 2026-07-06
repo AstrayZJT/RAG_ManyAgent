@@ -59,6 +59,14 @@ infrastructure:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
 
+insightflow:
+  workflow:
+    internal-evidence-threshold: ${INSIGHTFLOW_INTERNAL_EVIDENCE_THRESHOLD:2}
+    min-claim-count: ${INSIGHTFLOW_MIN_CLAIM_COUNT:2}
+    verify-pass-confidence: ${INSIGHTFLOW_VERIFY_PASS_CONFIDENCE:0.70}
+    review-pass-citation-coverage: ${INSIGHTFLOW_REVIEW_PASS_CITATION_COVERAGE:0.80}
+    max-loops: ${INSIGHTFLOW_MAX_LOOPS:2}
+
 management:
   endpoints:
     web:

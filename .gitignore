@@ -6,4 +6,4 @@
 *.log
 /knowledge/
 /sample-research.txt
-/task-request.json
+/task-request*.json

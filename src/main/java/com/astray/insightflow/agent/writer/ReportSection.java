@@ -9,6 +9,7 @@ public class ReportSection implements Serializable {
     private String heading;
     private String content;
     private List<String> evidenceIds = new ArrayList<>();
+    private boolean lowConfidence;
 
     public ReportSection() {
     }
@@ -41,5 +42,13 @@ public class ReportSection implements Serializable {
 
     public void setEvidenceIds(List<String> evidenceIds) {
         this.evidenceIds = evidenceIds == null ? new ArrayList<>() : evidenceIds;
+    }
+
+    public boolean isLowConfidence() {
+        return lowConfidence;
+    }
+
+    public void setLowConfidence(boolean lowConfidence) {
+        this.lowConfidence = lowConfidence;
     }
 }

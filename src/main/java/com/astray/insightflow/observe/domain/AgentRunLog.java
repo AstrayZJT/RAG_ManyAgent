@@ -30,6 +30,9 @@ public class AgentRunLog {
     @Lob
     private String outputJson;
 
+    @Lob
+    private String metricsJson;
+
     @Column(nullable = false)
     private Instant startedAt;
 
@@ -85,6 +88,14 @@ public class AgentRunLog {
 
     public void setOutputJson(String outputJson) {
         this.outputJson = outputJson;
+    }
+
+    public String getMetricsJson() {
+        return metricsJson;
+    }
+
+    public void setMetricsJson(String metricsJson) {
+        this.metricsJson = metricsJson;
     }
 
     public Instant getStartedAt() {
