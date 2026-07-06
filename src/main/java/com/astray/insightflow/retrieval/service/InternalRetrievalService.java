@@ -70,7 +70,7 @@ public class InternalRetrievalService {
         ranked.sort(Comparator.comparingDouble(Evidence::getScore).reversed());
         List<Evidence> result = ranked.stream().limit(maxResults).toList();
 
-        evidenceRecordRepository.deleteByTaskId(taskId);
+        evidenceRecordRepository.deleteByTaskIdAndSourceType(taskId, EvidenceSourceType.INTERNAL);
         List<EvidenceRecord> records = new ArrayList<>();
         for (Evidence evidence : result) {
             EvidenceRecord record = new EvidenceRecord();

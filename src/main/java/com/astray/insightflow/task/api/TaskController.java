@@ -2,6 +2,8 @@ package com.astray.insightflow.task.api;
 
 import com.astray.insightflow.agent.planner.PlanResult;
 import com.astray.insightflow.common.util.JsonUtils;
+import com.astray.insightflow.eval.api.EvaluationResponse;
+import com.astray.insightflow.eval.service.EvaluationService;
 import com.astray.insightflow.graph.TaskGraphExecutor;
 import com.astray.insightflow.observe.api.TaskTimelineResponse;
 import com.astray.insightflow.observe.service.TaskTimelineService;
@@ -18,9 +20,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -31,6 +36,7 @@ public class TaskController {
     private final TaskProgressPublisher taskProgressPublisher;
     private final ReportService reportService;
     private final TaskTimelineService taskTimelineService;
+    private final EvaluationService evaluationService;
     private final JsonUtils jsonUtils;
 
     public TaskController(TaskService taskService,
@@ -38,12 +44,14 @@ public class TaskController {
                           TaskProgressPublisher taskProgressPublisher,
                           ReportService reportService,
                           TaskTimelineService taskTimelineService,
+                          EvaluationService evaluationService,
                           JsonUtils jsonUtils) {
         this.taskService = taskService;
         this.taskGraphExecutor = taskGraphExecutor;
         this.taskProgressPublisher = taskProgressPublisher;
         this.reportService = reportService;
         this.taskTimelineService = taskTimelineService;
+        this.evaluationService = evaluationService;
         this.jsonUtils = jsonUtils;
     }
 
@@ -59,6 +67,26 @@ public class TaskController {
         taskService.getTask(taskId);
         taskGraphExecutor.executeAsync(taskId);
         return ResponseEntity.accepted().body(new RunTaskResponse(taskId, "ACCEPTED", "Task execution started"));
+    }
+
+    @PostMapping("/{id}/resume")
+    public ResponseEntity<RunTaskResponse> resumeTask(@PathVariable("id") String taskId,
+                                                      @RequestBody(required = false) ResumeTaskRequest request) {
+        taskService.getTask(taskId);
+        String checkpointId = request == null ? null : request.checkpointId();
+        Map<String, Object> statePatch = request == null || request.statePatch() == null ? Map.of() : request.statePatch();
+        taskGraphExecutor.resumeAsync(taskId, checkpointId, statePatch);
+        return ResponseEntity.accepted().body(new RunTaskResponse(taskId, "ACCEPTED", "Task resume started"));
+    }
+
+    @PostMapping("/{id}/rerun/{node}")
+    public ResponseEntity<RunTaskResponse> rerunTask(@PathVariable("id") String taskId,
+                                                     @PathVariable("node") String node,
+                                                     @RequestBody(required = false) RerunTaskRequest request) {
+        taskService.getTask(taskId);
+        Map<String, Object> statePatch = request == null || request.statePatch() == null ? Map.of() : request.statePatch();
+        taskGraphExecutor.rerunAsync(taskId, node, statePatch);
+        return ResponseEntity.accepted().body(new RunTaskResponse(taskId, "ACCEPTED", "Task rerun started"));
     }
 
     @GetMapping("/{id}")
@@ -104,7 +132,13 @@ public class TaskController {
     }
 
     @GetMapping("/{id}/timeline")
-    public ResponseEntity<TaskTimelineResponse> getTimeline(@PathVariable("id") String taskId) {
-        return ResponseEntity.ok(taskTimelineService.getTimeline(taskId));
+    public ResponseEntity<TaskTimelineResponse> getTimeline(@PathVariable("id") String taskId,
+                                                            @RequestParam(value = "beforeNode", required = false) String beforeNode) {
+        return ResponseEntity.ok(taskTimelineService.getTimeline(taskId, beforeNode));
+    }
+
+    @PostMapping("/{id}/evaluate")
+    public ResponseEntity<EvaluationResponse> evaluate(@PathVariable("id") String taskId) {
+        return ResponseEntity.ok(evaluationService.evaluate(taskId));
     }
 }

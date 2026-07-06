@@ -94,7 +94,9 @@ public class VerifyNode {
                 decision.setReadyForWrite(readyForWrite);
                 decision.setRerunRetrieval(!readyForWrite);
                 decision.setLowConfidenceMode(!readyForWrite);
-                decision.setReason(readyForWrite ? "验证通过，可进入写作。" : "验证未达阈值，建议回到检索阶段补证。");
+                decision.setReason(readyForWrite
+                        ? "验证通过，可进入写作。"
+                        : "验证未达阈值，建议回到检索阶段补证。");
             }
             decision.setSupportRatio(citationCoverage);
             decision.setConflictCount(conflictCount);

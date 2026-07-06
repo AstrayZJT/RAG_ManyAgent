@@ -68,6 +68,7 @@ public class TaskService {
         ResearchTask task = getTask(taskId);
         task.setStatus(ResearchTaskStatus.RUNNING);
         task.setStartedAt(Instant.now());
+        task.setCompletedAt(null);
         task.setUpdatedAt(task.getStartedAt());
         task.setErrorMessage(null);
         return researchTaskRepository.save(task);

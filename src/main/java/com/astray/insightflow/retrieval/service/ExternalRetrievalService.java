@@ -27,6 +27,7 @@ public class ExternalRetrievalService {
     @Transactional
     public List<Evidence> search(String taskId, List<String> queries, boolean enabled) {
         if (!enabled || queries == null || queries.isEmpty()) {
+            evidenceRecordRepository.deleteByTaskIdAndSourceType(taskId, EvidenceSourceType.EXTERNAL);
             return List.of();
         }
 
@@ -46,6 +47,8 @@ public class ExternalRetrievalService {
             evidence.setScore(Math.max(0.55D, 0.80D - (index * 0.08D)));
             result.add(evidence);
         }
+
+        evidenceRecordRepository.deleteByTaskIdAndSourceType(taskId, EvidenceSourceType.EXTERNAL);
         evidenceRecordRepository.saveAll(result.stream().map(evidence -> toRecord(taskId, evidence)).toList());
         return result;
     }

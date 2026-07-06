@@ -1,5 +1,6 @@
 package com.astray.insightflow.graph;
 
+import com.astray.insightflow.graph.checkpoint.DatabaseCheckpointSaver;
 import com.astray.insightflow.graph.node.ExtractNode;
 import com.astray.insightflow.graph.node.PlannerNode;
 import com.astray.insightflow.graph.node.ReviewNode;
@@ -8,6 +9,7 @@ import com.astray.insightflow.graph.node.WriteNode;
 import com.astray.insightflow.graph.router.ReviewRouteDecider;
 import com.astray.insightflow.graph.router.VerifyRouteDecider;
 import com.astray.insightflow.graph.state.ResearchState;
+import com.astray.insightflow.graph.state.ResearchStateFactory;
 import com.astray.insightflow.graph.subgraph.RetrievalSubgraphBuilder;
 import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.CompiledGraph;
@@ -38,6 +40,8 @@ public class ResearchGraphBuilder {
     private final RetrievalSubgraphBuilder retrievalSubgraphBuilder;
     private final VerifyRouteDecider verifyRouteDecider;
     private final ReviewRouteDecider reviewRouteDecider;
+    private final ResearchStateFactory researchStateFactory;
+    private final DatabaseCheckpointSaver checkpointSaver;
 
     public ResearchGraphBuilder(PlannerNode plannerNode,
                                 ExtractNode extractNode,
@@ -46,7 +50,9 @@ public class ResearchGraphBuilder {
                                 ReviewNode reviewNode,
                                 RetrievalSubgraphBuilder retrievalSubgraphBuilder,
                                 VerifyRouteDecider verifyRouteDecider,
-                                ReviewRouteDecider reviewRouteDecider) {
+                                ReviewRouteDecider reviewRouteDecider,
+                                ResearchStateFactory researchStateFactory,
+                                DatabaseCheckpointSaver checkpointSaver) {
         this.plannerNode = plannerNode;
         this.extractNode = extractNode;
         this.verifyNode = verifyNode;
@@ -55,11 +61,13 @@ public class ResearchGraphBuilder {
         this.retrievalSubgraphBuilder = retrievalSubgraphBuilder;
         this.verifyRouteDecider = verifyRouteDecider;
         this.reviewRouteDecider = reviewRouteDecider;
+        this.researchStateFactory = researchStateFactory;
+        this.checkpointSaver = checkpointSaver;
     }
 
     public CompiledGraph<ResearchState> build() {
         try {
-            StateGraph<ResearchState> stateGraph = new StateGraph<>(ResearchState.SCHEMA, ResearchState::new)
+            StateGraph<ResearchState> stateGraph = new StateGraph<>(ResearchState.SCHEMA, researchStateFactory)
                     .addNode(PLANNER, node_async((state, config) -> plannerNode.execute(state)))
                     .addNode(EXTRACT, node_async((state, config) -> extractNode.execute(state)))
                     .addNode(VERIFY, node_async((state, config) -> verifyNode.execute(state)))
@@ -73,7 +81,7 @@ public class ResearchGraphBuilder {
                             VERIFY,
                             edge_async(verifyRouteDecider::decide),
                             Map.of(
-                                    VerifyRouteDecider.GO_RETRIEVAL, RetrievalSubgraphBuilder.RETRIEVE_INTERNAL,
+                                    VerifyRouteDecider.GO_RETRIEVAL, RetrievalSubgraphBuilder.RETRIEVAL_START,
                                     VerifyRouteDecider.GO_WRITE, WRITE
                             )
                     )
@@ -83,12 +91,13 @@ public class ResearchGraphBuilder {
                             edge_async(reviewRouteDecider::decide),
                             Map.of(
                                     ReviewRouteDecider.APPROVED, END,
-                                    ReviewRouteDecider.RERUN_RETRIEVAL, RetrievalSubgraphBuilder.RETRIEVE_INTERNAL,
+                                    ReviewRouteDecider.RERUN_RETRIEVAL, RetrievalSubgraphBuilder.RETRIEVAL_START,
                                     ReviewRouteDecider.RERUN_VERIFY, VERIFY
                             )
                     );
 
             return stateGraph.compile(CompileConfig.builder()
+                    .checkpointSaver(checkpointSaver)
                     .releaseThread(false)
                     .build());
         } catch (Exception exception) {

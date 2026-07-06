@@ -6,7 +6,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,7 +14,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Component
 public class TaskProgressPublisher {
 
-    private final Map<String, List<TaskProgressEvent>> eventHistory = new ConcurrentHashMap<>();
+    private final Map<String, CopyOnWriteArrayList<TaskProgressEvent>> eventHistory = new ConcurrentHashMap<>();
     private final Map<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
     public SseEmitter subscribe(String taskId) {
@@ -24,7 +23,7 @@ public class TaskProgressPublisher {
         emitter.onCompletion(() -> remove(taskId, emitter));
         emitter.onTimeout(() -> remove(taskId, emitter));
 
-        for (TaskProgressEvent event : eventHistory.getOrDefault(taskId, List.of())) {
+        for (TaskProgressEvent event : eventHistory.getOrDefault(taskId, new CopyOnWriteArrayList<>())) {
             sendEvent(emitter, event);
         }
         publish(taskId, "stream", "CONNECTED", "SSE stream connected", Map.of("taskId", taskId));
@@ -33,12 +32,12 @@ public class TaskProgressPublisher {
 
     public void publish(String taskId, String stage, String status, String message, Map<String, Object> payload) {
         TaskProgressEvent event = new TaskProgressEvent(Instant.now(), stage, status, message, payload);
-        eventHistory.computeIfAbsent(taskId, key -> new ArrayList<>()).add(event);
+        eventHistory.computeIfAbsent(taskId, key -> new CopyOnWriteArrayList<>()).add(event);
         emitters.getOrDefault(taskId, new CopyOnWriteArrayList<>()).forEach(emitter -> sendEvent(emitter, event));
     }
 
     public List<TaskProgressEvent> history(String taskId) {
-        return List.copyOf(eventHistory.getOrDefault(taskId, List.of()));
+        return List.copyOf(eventHistory.getOrDefault(taskId, new CopyOnWriteArrayList<>()));
     }
 
     private void sendEvent(SseEmitter emitter, TaskProgressEvent event) {
