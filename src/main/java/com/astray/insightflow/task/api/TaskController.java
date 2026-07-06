@@ -1,0 +1,100 @@
+package com.astray.insightflow.task.api;
+
+import com.astray.insightflow.agent.planner.PlanResult;
+import com.astray.insightflow.common.util.JsonUtils;
+import com.astray.insightflow.graph.TaskGraphExecutor;
+import com.astray.insightflow.report.api.ReportResponse;
+import com.astray.insightflow.report.service.ReportService;
+import com.astray.insightflow.task.domain.ResearchTask;
+import com.astray.insightflow.task.service.TaskProgressPublisher;
+import com.astray.insightflow.task.service.TaskService;
+import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+@RestController
+@RequestMapping("/api/tasks")
+public class TaskController {
+
+    private final TaskService taskService;
+    private final TaskGraphExecutor taskGraphExecutor;
+    private final TaskProgressPublisher taskProgressPublisher;
+    private final ReportService reportService;
+    private final JsonUtils jsonUtils;
+
+    public TaskController(TaskService taskService,
+                          TaskGraphExecutor taskGraphExecutor,
+                          TaskProgressPublisher taskProgressPublisher,
+                          ReportService reportService,
+                          JsonUtils jsonUtils) {
+        this.taskService = taskService;
+        this.taskGraphExecutor = taskGraphExecutor;
+        this.taskProgressPublisher = taskProgressPublisher;
+        this.reportService = reportService;
+        this.jsonUtils = jsonUtils;
+    }
+
+    @PostMapping
+    public ResponseEntity<TaskResponse> createTask(@Valid @RequestBody CreateTaskRequest request) {
+        String language = StringUtils.hasText(request.language()) ? request.language() : "zh-CN";
+        ResearchTask task = taskService.createTask(request.query().trim(), language.trim());
+        return ResponseEntity.ok(TaskResponse.from(task));
+    }
+
+    @PostMapping("/{id}/run")
+    public ResponseEntity<RunTaskResponse> runTask(@PathVariable("id") String taskId) {
+        taskService.getTask(taskId);
+        taskGraphExecutor.executeAsync(taskId);
+        return ResponseEntity.accepted().body(new RunTaskResponse(taskId, "ACCEPTED", "Task execution started"));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TaskDetailResponse> getTask(@PathVariable("id") String taskId) {
+        ResearchTask task = taskService.getTask(taskId);
+        PlanResult plan = taskService.getTaskPlan(taskId)
+                .map(entity -> jsonUtils.fromJson(entity.getPlanJson(), PlanResult.class))
+                .orElse(null);
+        boolean reportAvailable = taskService.getFinalReport(taskId).isPresent();
+        TaskDetailResponse response = new TaskDetailResponse(
+                task.getId(),
+                task.getQueryText(),
+                task.getLanguage(),
+                task.getStatus().name(),
+                task.getErrorMessage(),
+                task.getCreatedAt(),
+                task.getStartedAt(),
+                task.getCompletedAt(),
+                taskService.getEvidenceCount(taskId),
+                reportAvailable,
+                plan
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/report")
+    public ResponseEntity<ReportResponse> getReport(@PathVariable("id") String taskId) {
+        var report = reportService.getByTaskId(taskId);
+        var draft = jsonUtils.fromJson(report.getReportJson(), com.astray.insightflow.agent.writer.ReportDraft.class);
+        return ResponseEntity.ok(new ReportResponse(
+                taskId,
+                report.getTitle(),
+                report.getReportMarkdown(),
+                draft,
+                report.getUpdatedAt()
+        ));
+    }
+
+    @GetMapping(path = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream(@PathVariable("id") String taskId) {
+        taskService.getTask(taskId);
+        return taskProgressPublisher.subscribe(taskId);
+    }
+}

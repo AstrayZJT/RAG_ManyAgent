@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: insightflow
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./build/insightflow-db;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.h2.Driver}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+server:
+  port: 8080
+
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${OPENAI_API_KEY:}
+      model-name: qwen-plus
+      log-requests: true
+      log-responses: true
+
+agent:
+  search:
+    max-results: ${AGENT_SEARCH_MAX_RESULTS:5}
+  webpage:
+    max-characters: ${AGENT_WEBPAGE_MAX_CHARACTERS:8000}
+
+rag:
+  knowledge-path: ${RAG_KNOWLEDGE_PATH:knowledge}
+  pgvector:
+    host: ${RAG_PGVECTOR_HOST:localhost}
+    port: ${RAG_PGVECTOR_PORT:5432}
+    database: ${RAG_PGVECTOR_DATABASE:agentdemo}
+    username: ${RAG_PGVECTOR_USERNAME:postgres}
+    password: ${RAG_PGVECTOR_PASSWORD:}
+    table: ${RAG_PGVECTOR_TABLE:knowledge_embeddings}
+
+infrastructure:
+  redis:
+    enabled: ${INFRA_REDIS_ENABLED:false}
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+  minio:
+    enabled: ${INFRA_MINIO_ENABLED:false}
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    bucket: ${MINIO_BUCKET:insightflow}
+  rabbitmq:
+    enabled: ${INFRA_RABBITMQ_ENABLED:false}
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

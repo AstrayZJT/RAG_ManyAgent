@@ -1,0 +1,9 @@
+/target/
+/build/
+/.idea/
+/.mvn/
+*.iml
+*.log
+/knowledge/
+/sample-research.txt
+/task-request.json
