@@ -2192,8 +2192,8 @@ function updateDropzoneLabel(file) {
     span.textContent = `${file.type || '未知类型'} · ${formatNumber(file.size / 1024, 0)} KB`;
     return;
   }
-  strong.textContent = 'Drop a file here';
-  span.textContent = 'or choose a UTF-8 text file to index';
+  strong.textContent = '拖放文件到这里';
+  span.textContent = '或选择一个 UTF-8 文本文件进行索引';
 }
 
 function persistTaskSelection() {

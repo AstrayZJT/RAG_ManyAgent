@@ -107,7 +107,7 @@ public class KnowledgeDocumentService {
         return knowledgeDocumentRepository.findAllByOrderByUploadedAtDesc();
     }
 
-    private String readDocumentContent(Path path) throws IOException {
+    String readDocumentContent(Path path) throws IOException {
         byte[] bytes = Files.readAllBytes(path);
         List<Charset> candidates = List.of(
                 StandardCharsets.UTF_8,

@@ -160,11 +160,96 @@ public class ExternalRetrievalService {
     }
 
     private List<SearchHit> searchExternalSources(String originalQuery, String searchQuery) {
-        List<SearchHit> hits = searchBing(originalQuery, searchQuery);
+        List<SearchHit> hits = searchSogou(originalQuery, searchQuery);
+        if (!hits.isEmpty()) {
+            return hits;
+        }
+        hits = searchBing(originalQuery, searchQuery);
         if (!hits.isEmpty()) {
             return hits;
         }
         return searchDuckDuckGo(originalQuery, searchQuery);
+    }
+
+    List<SearchHit> searchSogou(String originalQuery, String searchQuery) {
+        try {
+            Document document = Jsoup.connect("https://www.sogou.com/web")
+                    .data("query", searchQuery)
+                    .data("ie", "utf8")
+                    .userAgent(userAgent)
+                    .timeout(timeoutMs)
+                    .referrer("https://www.sogou.com/")
+                    .followRedirects(true)
+                    .get();
+
+            return parseSogouResults(document, originalQuery);
+        } catch (IOException exception) {
+            return List.of();
+        }
+    }
+
+    List<SearchHit> parseSogouResults(Document document, String query) {
+        List<SearchHit> hits = new ArrayList<>();
+        for (Element result : document.select("div.vrwrap")) {
+            Element link = result.selectFirst("h3.vr-title a[href], h3 a[href]");
+            if (link == null) {
+                continue;
+            }
+
+            String title = normalizeWhitespace(link.text());
+            String url = resolveSogouResultUrl(result, link);
+            if (!StringUtils.hasText(title) || !StringUtils.hasText(url)) {
+                continue;
+            }
+
+            String snippet = normalizeWhitespace(result.select(".fz-mid.space-txt, .b_caption p, p.star-wiki").text());
+            if (!StringUtils.hasText(snippet)) {
+                snippet = normalizeWhitespace(result.select(".citeLinkClass").text());
+            }
+
+            String normalizedUrl = normalizeUrl(url);
+            if (!StringUtils.hasText(normalizedUrl)) {
+                continue;
+            }
+
+            hits.add(new SearchHit(title, normalizedUrl, snippet, query));
+            if (hits.size() >= maxExternalResultsPerQuery) {
+                break;
+            }
+        }
+        return hits;
+    }
+
+    private String resolveSogouResultUrl(Element result, Element link) {
+        String canonicalUrl = extractSogouCanonicalUrl(result);
+        if (StringUtils.hasText(canonicalUrl)) {
+            String normalizedCanonicalUrl = normalizeUrl(canonicalUrl);
+            if (StringUtils.hasText(normalizedCanonicalUrl)) {
+                return normalizedCanonicalUrl;
+            }
+        }
+        if (link == null) {
+            return null;
+        }
+        return normalizeUrl(resolveSogouUrl(link.attr("href")));
+    }
+
+    private String extractSogouCanonicalUrl(Element result) {
+        if (result == null) {
+            return null;
+        }
+        Element canonicalElement = result.selectFirst(".r-sech[data-url], .ext_query[data-url], .result_list[data-url], [data-url]");
+        if (canonicalElement != null && StringUtils.hasText(canonicalElement.attr("data-url"))) {
+            return canonicalElement.attr("data-url");
+        }
+        Element citeLink = result.selectFirst("a.citeLinkClass[href]");
+        if (citeLink != null) {
+            String decoded = decodeRedirectUrl(citeLink.attr("href"));
+            if (StringUtils.hasText(decoded)) {
+                return decoded;
+            }
+        }
+        return null;
     }
 
     List<SearchHit> searchBing(String originalQuery, String searchQuery) {
@@ -249,6 +334,20 @@ public class ExternalRetrievalService {
         }
     }
 
+    private String resolveSogouUrl(String href) {
+        if (!StringUtils.hasText(href)) {
+            return null;
+        }
+        String trimmed = href.trim();
+        if (trimmed.startsWith("//")) {
+            trimmed = "https:" + trimmed;
+        }
+        if (trimmed.startsWith("/")) {
+            trimmed = "https://www.sogou.com" + trimmed;
+        }
+        return decodeRedirectUrl(trimmed);
+    }
+
     private String decodeRedirectUrl(String href) {
         if (!StringUtils.hasText(href)) {
             return null;
@@ -256,6 +355,20 @@ public class ExternalRetrievalService {
         String candidate = href.startsWith("//") ? "https:" + href : href;
         try {
             URI uri = new URI(candidate);
+            if (uri.getHost() != null && uri.getHost().contains("sogou.com") && StringUtils.hasText(uri.getPath()) && uri.getPath().contains("/link")) {
+                String query = uri.getRawQuery();
+                if (query != null) {
+                    for (String part : query.split("&")) {
+                        String[] kv = part.split("=", 2);
+                        if (kv.length == 2 && ("url".equals(kv[0]) || "u".equals(kv[0]) || "target".equals(kv[0]))) {
+                            String decoded = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+                            if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+                                return decoded;
+                            }
+                        }
+                    }
+                }
+            }
             if (uri.getHost() != null && (uri.getHost().contains("duckduckgo.com") || uri.getHost().contains("bing.com"))) {
                 String query = uri.getRawQuery();
                 if (query != null) {

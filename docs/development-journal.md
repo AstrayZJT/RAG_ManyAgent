@@ -158,3 +158,16 @@
   2. 引入更细粒度的 domain signal / year signal / entity signal 打分
   3. 优化提取与验证阶段对“弱相关证据”的拒收策略
   4. 再做一轮电网主题回归，确保最终报告引用真正落在电网行业事实而不是宏观背景词条上
+
+### 本轮补充
+
+#### 继续完成的修复
+- `ExternalRetrievalService` 进一步改成优先读取搜狗结果里的真实 `data-url`，避免把 `https://www.sogou.com/link?...` 这种中转地址直接送进抓取器。
+- `decodeRedirectUrl` 现在也会尝试解析搜狗链接里的目标地址，外部网页证据的可抓取性更稳定了。
+- 新增 `SampleKnowledgeBootstrapRunner`，在数据库为空时会自动把 `knowledge/raw` 里的样例文档建档并索引，这样“内部知识库优先”的演示不再是空壳。
+- 前端空白态的拖拽提示改成了中文，和整体控制台语言保持一致。
+
+#### 继续完成的验证
+- `mvn test` 通过。
+- `ExternalRetrievalServiceTests` 新增了对搜狗 canonical URL 的回归用例。
+- 当前仓库已经具备“内部样例知识库 + 外部网页补证”的最小可演示闭环。

@@ -50,6 +50,36 @@ class ExternalRetrievalServiceTests {
     }
 
     @Test
+    void parseSogouResultsExtractsSearchHits() {
+        String html = """
+                <html>
+                  <body>
+                    <div class="vrwrap">
+                      <h3 class="vr-title">
+                        <a href="/link?url=abc">国家电网公司历史沿革</a>
+                      </h3>
+                      <div class="fz-mid space-txt">2002年国务院实施电力体制改革，组建国家电网公司。</div>
+                    </div>
+                    <div class="vrwrap">
+                      <h3 class="vr-title">
+                        <a href="https://baike.sogou.com/v167368.htm">国家电网有限公司</a>
+                      </h3>
+                      <p class="star-wiki">近20多年来，国家电网建成多项特高压输电工程。</p>
+                    </div>
+                  </body>
+                </html>
+                """;
+
+        List<ExternalRetrievalService.SearchHit> hits = service.parseSogouResults(Jsoup.parse(html), "国家电网 发展历史");
+
+        assertEquals(2, hits.size());
+        assertEquals("国家电网公司历史沿革", hits.get(0).title());
+        assertEquals("https://www.sogou.com/link?url=abc", hits.get(0).normalizedUrl());
+        assertTrue(hits.get(0).snippet().contains("2002年"));
+        assertEquals("国家电网 发展历史", hits.get(0).query());
+    }
+
+    @Test
     void isRelevantHitKeepsTopicAnchoredPowerGridResults() {
         boolean relevant = service.isRelevantHit(
                 "中国电网 特高压 输电 发展历史",
@@ -83,5 +113,29 @@ class ExternalRetrievalServiceTests {
         );
 
         assertFalse(relevant);
+    }
+
+    @Test
+    void parseSogouResultsPrefersCanonicalDataUrlWhenPresent() {
+        String html = """
+                <html>
+                  <body>
+                    <div class="vrwrap">
+                      <h3 class="vr-title">
+                        <a href="/link?url=abc">Redirected Title</a>
+                      </h3>
+                      <div class="r-sech ext_query result_list" data-url="https://example.com/final-article"></div>
+                      <div class="fz-mid space-txt">Canonical snippet</div>
+                    </div>
+                  </body>
+                </html>
+                """;
+
+        List<ExternalRetrievalService.SearchHit> hits = service.parseSogouResults(Jsoup.parse(html), "demo query");
+
+        assertEquals(1, hits.size());
+        assertEquals("Redirected Title", hits.get(0).title());
+        assertEquals("https://example.com/final-article", hits.get(0).normalizedUrl());
+        assertEquals("Canonical snippet", hits.get(0).snippet());
     }
 }
