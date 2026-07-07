@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,6 +50,10 @@ public class TaskService {
     public ResearchTask getTask(String taskId) {
         return researchTaskRepository.findById(taskId)
                 .orElseThrow(() -> new NotFoundException("Task not found: " + taskId));
+    }
+
+    public List<ResearchTask> listTasks() {
+        return researchTaskRepository.findAllByOrderByCreatedAtDesc();
     }
 
     public Optional<TaskPlanEntity> getTaskPlan(String taskId) {

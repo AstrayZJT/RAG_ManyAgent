@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -60,6 +61,11 @@ public class TaskController {
         String language = StringUtils.hasText(request.language()) ? request.language() : "zh-CN";
         ResearchTask task = taskService.createTask(request.query().trim(), language.trim());
         return ResponseEntity.ok(TaskResponse.from(task));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<TaskResponse>> listTasks() {
+        return ResponseEntity.ok(taskService.listTasks().stream().map(TaskResponse::from).toList());
     }
 
     @PostMapping("/{id}/run")
@@ -135,6 +141,17 @@ public class TaskController {
     public ResponseEntity<TaskTimelineResponse> getTimeline(@PathVariable("id") String taskId,
                                                             @RequestParam(value = "beforeNode", required = false) String beforeNode) {
         return ResponseEntity.ok(taskTimelineService.getTimeline(taskId, beforeNode));
+    }
+
+    @GetMapping("/{id}/checkpoints")
+    public ResponseEntity<List<com.astray.insightflow.observe.api.CheckpointLogEntry>> listCheckpoints(@PathVariable("id") String taskId) {
+        return ResponseEntity.ok(taskTimelineService.getCheckpointEntries(taskId));
+    }
+
+    @GetMapping("/{id}/checkpoints/{checkpointId}")
+    public ResponseEntity<com.astray.insightflow.observe.api.CheckpointLogEntry> getCheckpoint(@PathVariable("id") String taskId,
+                                                                                              @PathVariable("checkpointId") String checkpointId) {
+        return ResponseEntity.ok(taskTimelineService.getCheckpoint(taskId, checkpointId));
     }
 
     @PostMapping("/{id}/evaluate")

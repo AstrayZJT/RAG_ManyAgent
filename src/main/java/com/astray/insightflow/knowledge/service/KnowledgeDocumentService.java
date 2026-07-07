@@ -99,6 +99,10 @@ public class KnowledgeDocumentService {
                 .orElseThrow(() -> new NotFoundException("Document not found: " + documentId));
     }
 
+    public List<KnowledgeDocument> listDocuments() {
+        return knowledgeDocumentRepository.findAllByOrderByUploadedAtDesc();
+    }
+
     private List<String> splitIntoChunks(String content, int maxLength) {
         if (!StringUtils.hasText(content)) {
             return List.of();

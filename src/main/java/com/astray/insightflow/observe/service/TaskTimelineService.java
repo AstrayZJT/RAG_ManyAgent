@@ -123,6 +123,17 @@ public class TaskTimelineService {
         );
     }
 
+    public List<CheckpointLogEntry> getCheckpointEntries(String taskId) {
+        return checkpointService.list(taskId).stream()
+                .map(meta -> toCheckpointEntry(meta, false))
+                .toList();
+    }
+
+    public CheckpointLogEntry getCheckpoint(String taskId, String checkpointId) {
+        GraphCheckpointMeta meta = checkpointService.get(taskId, checkpointId);
+        return toCheckpointEntry(meta, true);
+    }
+
     private int aggregateTokenUsage(List<AgentRunLog> agentLogs, List<ToolCallLog> toolLogs) {
         int sum = 0;
         for (AgentRunLog log : agentLogs) {
