@@ -18,9 +18,9 @@ server:
 langchain4j:
   open-ai:
     chat-model:
-      base-url: ${OPENAI_BASE_URL:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_BASE_URL:https://api.openai.com/v1}}
+      base-url: ${OPENAI_BASE_URL:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}}
       api-key: ${OPENAI_API_KEY:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_API_KEY:}}
-      model-name: ${OPENAI_MODEL_NAME:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_MODEL_NAME:gpt-4o-mini}}
+      model-name: ${OPENAI_MODEL_NAME:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_MODEL_NAME:qwen-plus}}
       temperature: ${OPENAI_TEMPERATURE:0.2}
       max-completion-tokens: ${OPENAI_MAX_COMPLETION_TOKENS:2400}
       timeout: ${OPENAI_TIMEOUT:PT90S}
