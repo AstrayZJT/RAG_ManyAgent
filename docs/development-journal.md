@@ -100,3 +100,61 @@
 2. 或切换到可访问的兼容模型服务
 3. 再执行一次完整调研任务，验证最终报告质量、引用覆盖率和回退链路
 
+### 晚间联调补充
+
+#### 新增修复
+- `PlannerNode` 现在会对 LLM 产出的 `PlanResult` 做统一归一化与兜底，避免出现“计划很泛、没锚定主题、直接把外部检索关掉”的情况。
+- 新增 `PlannerPlanTemplates`：
+  - 支持通用研究模板
+  - 支持电网/行业研究模板
+  - 自动补齐 `dimensions / subQueries / factSchema`
+  - 对“明显太泛”的计划直接替换为可执行 fallback plan
+- `StubPlannerAgent` 改为复用同一套模板逻辑，保证有无真实模型时行为一致。
+- 修复 `extractor-user.txt` 占位符错误：
+  - 原来写成了单花括号，真实 LLM 实际拿不到 `planJson` 和 `evidenceJson`
+  - 现已改为 `{{planJson}} / {{evidenceJson}}`
+- `ExtractNode` 新增工程兜底：
+  - 如果 LLM 抽取失败或返回空 facts
+  - 自动切换到启发式抽取
+  - 保证主流程不会因为单个 Agent 空返回直接塌掉
+- `ExternalRetrievalService` 继续增强：
+  - Bing 优先，DuckDuckGo 兜底
+  - 增加 query-topic 相关性过滤
+  - 避免把“关于”“年份百科”“无关热词”直接塞进证据池
+  - 针对电网类主题补充权威站点定向搜索入口（如能源局、国家电网、南方电网、中电联）
+
+#### 新增测试
+- 新增 `PlannerPlanTemplatesTests`
+  - 验证泛化 Planner 输出会被电网主题 fallback 替换
+  - 验证时效性主题会自动打开外部检索
+- 新增 `ExtractNodeTests`
+  - 验证 LLM 返回空 facts 时会自动进入 heuristic fallback
+- 扩展 `ExternalRetrievalServiceTests`
+  - 验证相关电网结果会被保留
+  - 验证“关于（汉语词语）”“2020 年度新闻”这类噪音结果会被过滤
+
+#### 真实运行验证
+- 运行环境：
+  - PostgreSQL `agentdemo`
+  - `qwen-plus`
+  - Spring Profile=`postgres`
+- 真实任务已经可以稳定跑完整条链路：
+  - `planner -> retrieval -> extract -> verify -> write -> review`
+  - checkpoint 会持续落库
+  - 任务轨迹、token、citationCoverage 可以通过接口查询
+- 联调过程中观察到的阶段性结果：
+  - 第一轮：Planner 已贴题，外部检索拿到 8 条证据，但抽取为 0 facts
+  - 第二轮：修复 extractor prompt 后，facts/claims/report/citation 全链路跑通
+  - 第三轮：外检相关性过滤生效后，噪音证据数量明显下降，但也出现过“过滤过严导致证据为 0”的情况
+
+#### 当前仍需继续优化的点
+- 真实外部检索已经不再只是“能搜到”，但“搜得准”还没有完全达到调研报告要求。
+- 电网主题下仍可能出现以下问题：
+  - 某些 query 被搜索引擎召回到百科型年度页面
+  - 相关性阈值过松时会进脏证据
+  - 阈值过紧时又可能把候选全部过滤掉
+- 下一步需要继续做：
+  1. 针对权威站点做更稳定的 query expansion
+  2. 引入更细粒度的 domain signal / year signal / entity signal 打分
+  3. 优化提取与验证阶段对“弱相关证据”的拒收策略
+  4. 再做一轮电网主题回归，确保最终报告引用真正落在电网行业事实而不是宏观背景词条上

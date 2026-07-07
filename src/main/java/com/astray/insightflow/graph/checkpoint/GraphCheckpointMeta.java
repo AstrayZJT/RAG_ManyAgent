@@ -3,7 +3,6 @@ package com.astray.insightflow.graph.checkpoint;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -28,11 +27,10 @@ public class GraphCheckpointMeta {
     @Column(nullable = false, length = 32)
     private String saveMode;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String stateJson;
 
-    @Lob
+    @Column(columnDefinition = "text")
     private String stateSummaryJson;
 
     @Column(nullable = false)

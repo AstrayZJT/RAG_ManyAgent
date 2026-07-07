@@ -2,6 +2,7 @@ package com.astray.insightflow.graph.node;
 
 import com.astray.insightflow.agent.planner.PlanResult;
 import com.astray.insightflow.agent.planner.PlannerAgent;
+import com.astray.insightflow.agent.planner.PlannerPlanTemplates;
 import com.astray.insightflow.common.util.JsonUtils;
 import com.astray.insightflow.common.util.MetricsUtils;
 import com.astray.insightflow.graph.state.ResearchState;
@@ -43,7 +44,11 @@ public class PlannerNode {
         String taskId = state.taskId();
         taskProgressPublisher.publish(taskId, "planner", "RUNNING", "Planner node started", Map.of());
         try {
-            PlanResult plan = plannerAgent.plan(state.userQuery(), state.language());
+            PlanResult plan = PlannerPlanTemplates.normalize(
+                    state.userQuery(),
+                    state.language(),
+                    plannerAgent.plan(state.userQuery(), state.language())
+            );
             TaskPlanEntity entity = taskPlanRepository.findByTaskId(taskId).orElseGet(TaskPlanEntity::new);
             if (entity.getId() == null) {
                 entity.setId(UUID.randomUUID().toString());

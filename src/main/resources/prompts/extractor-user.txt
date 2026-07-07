@@ -1,10 +1,10 @@
 研究目标：{{query}}
 输出语言：{{language}}
 
-研究计划 JSON：
-{{planJson}}
+研究计划 JSON：{{planJson}}
+证据 JSON：{{evidenceJson}}
 
-证据 JSON：
-{{evidenceJson}}
-
-请直接输出提取到的 ExtractedFact 数组。
+请直接输出一个抽取结果对象，结构为：
+{
+  "items": [ExtractedFact, ...]
+}

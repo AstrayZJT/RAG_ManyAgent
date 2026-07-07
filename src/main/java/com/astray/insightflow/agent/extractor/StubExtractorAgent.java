@@ -19,7 +19,7 @@ public class StubExtractorAgent implements ExtractorAgent {
     }
 
     @Override
-    public List<ExtractedFact> extract(String query, String language, String planJson, String evidenceJson) {
+    public ExtractResult extract(String query, String language, String planJson, String evidenceJson) {
         PlanResult plan = jsonUtils.fromJson(planJson, PlanResult.class);
         EvidenceListWrapper evidenceWrapper = jsonUtils.fromJson(evidenceJson, EvidenceListWrapper.class);
         List<ExtractedFact> facts = new ArrayList<>();
@@ -43,7 +43,9 @@ public class StubExtractorAgent implements ExtractorAgent {
                 facts.add(fact);
             }
         }
-        return facts;
+        ExtractResult result = new ExtractResult();
+        result.setItems(facts);
+        return result;
     }
 
     private List<String> splitSentences(String text) {

@@ -3,7 +3,6 @@ package com.astray.insightflow.task.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -18,8 +17,7 @@ public class TaskPlanEntity {
     @Column(nullable = false, unique = true)
     private String taskId;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String planJson;
 
     @Column(nullable = false)

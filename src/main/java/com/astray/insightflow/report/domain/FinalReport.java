@@ -3,7 +3,6 @@ package com.astray.insightflow.report.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -21,12 +20,10 @@ public class FinalReport {
     @Column(nullable = false, length = 512)
     private String title;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String reportMarkdown;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String reportJson;
 
     @Column(nullable = false)

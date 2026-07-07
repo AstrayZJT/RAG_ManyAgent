@@ -3,7 +3,9 @@ package com.astray.insightflow.graph.node;
 import com.astray.insightflow.agent.extractor.ExtractedFact;
 import com.astray.insightflow.agent.extractor.ExtractedFactEntity;
 import com.astray.insightflow.agent.extractor.ExtractedFactRepository;
+import com.astray.insightflow.agent.extractor.ExtractResult;
 import com.astray.insightflow.agent.extractor.ExtractorAgent;
+import com.astray.insightflow.agent.extractor.StubExtractorAgent;
 import com.astray.insightflow.common.util.JsonUtils;
 import com.astray.insightflow.common.util.MetricsUtils;
 import com.astray.insightflow.graph.state.ResearchState;
@@ -52,25 +54,50 @@ public class ExtractNode {
         try {
             String planJson = jsonUtils.toJson(state.plan());
             String evidenceJson = jsonUtils.toJson(Map.of("items", state.mergedEvidences()));
-            List<ExtractedFact> facts = extractorAgent.extract(state.userQuery(), state.language(), planJson, evidenceJson);
+            boolean fallbackUsed = false;
+            ExtractResult result = null;
+            try {
+                result = extractorAgent.extract(state.userQuery(), state.language(), planJson, evidenceJson);
+            } catch (Exception exception) {
+                fallbackUsed = true;
+                taskProgressPublisher.publish(taskId, "extract", "RUNNING",
+                        "LLM extractor failed, switching to heuristic fallback", Map.of(
+                                "reason", exception.getClass().getSimpleName()
+                        ));
+            }
+
+            List<ExtractedFact> facts = result == null ? List.of() : result.getItems();
+            if (facts.isEmpty() && !state.mergedEvidences().isEmpty()) {
+                fallbackUsed = true;
+                taskProgressPublisher.publish(taskId, "extract", "RUNNING",
+                        "LLM extractor returned no facts, using heuristic fallback", Map.of(
+                                "evidenceCount", state.mergedEvidences().size()
+                        ));
+                facts = new StubExtractorAgent(jsonUtils)
+                        .extract(state.userQuery(), state.language(), planJson, evidenceJson)
+                        .getItems();
+            }
             facts = factNormalizeTool.normalize(taskId, "extract", facts);
 
             extractedFactRepository.deleteByTaskId(taskId);
             extractedFactRepository.saveAll(facts.stream().map(fact -> toEntity(taskId, fact)).toList());
 
-            Map<String, Object> metrics = Map.of(
-                    "tokenUsage", MetricsUtils.estimateTokens(planJson, evidenceJson),
-                    "factCount", facts.size()
-            );
+            Map<String, Object> metrics = new LinkedHashMap<>();
+            metrics.put("tokenUsage", MetricsUtils.estimateTokens(planJson, evidenceJson));
+            metrics.put("factCount", facts.size());
+            metrics.put("fallbackUsed", fallbackUsed);
 
             Map<String, Object> output = new LinkedHashMap<>();
             output.put(ResearchState.FACTS, facts);
             output.put(ResearchState.STATUS, "FACTS_READY");
             output.put(ResearchState.METRICS, metrics);
-            output.put(ResearchState.TIMELINE, List.of("extract completed"));
-            agentRunLogService.logSuccess(taskId, "extract", startedAt, facts, "Structured facts extracted", metrics);
+            output.put(ResearchState.TIMELINE, List.of(fallbackUsed ? "extract fallback completed" : "extract completed"));
+            agentRunLogService.logSuccess(taskId, "extract", startedAt, facts,
+                    fallbackUsed ? "Structured facts extracted with heuristic fallback" : "Structured facts extracted",
+                    metrics);
             taskProgressPublisher.publish(taskId, "extract", "COMPLETED", "Fact extraction completed", Map.of(
-                    "factCount", facts.size()
+                    "factCount", facts.size(),
+                    "fallbackUsed", fallbackUsed
             ));
             return output;
         } catch (Exception exception) {

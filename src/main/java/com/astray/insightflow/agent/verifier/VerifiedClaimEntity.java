@@ -3,7 +3,6 @@ package com.astray.insightflow.agent.verifier;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -24,12 +23,10 @@ public class VerifiedClaimEntity {
     @Column(nullable = false, length = 4000)
     private String claimText;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String supportEvidenceJson;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String conflictEvidenceJson;
 
     @Column(nullable = false)

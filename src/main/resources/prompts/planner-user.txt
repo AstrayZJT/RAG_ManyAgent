@@ -1,12 +1,12 @@
 研究目标：{{query}}
 输出语言：{{language}}
 
-请生成 PlanResult，字段要求如下：
-- objectiveSummary：一句话概括研究目标
-- dimensions：3 到 5 个分析维度，每个维度包含 name 和 rationale
-- subQueries：4 到 6 条可直接检索的子查询
-- retrievalStrategy：简明说明内部优先、外部补证的策略
-- factSchema：4 到 6 个事实字段，每个字段包含 name 和 description
-- needExternalSearch：布尔值
+请生成 `PlanResult`，字段要求如下：
+- `objectiveSummary`：一句话概括研究目标，必须点明具体主题。
+- `dimensions`：3 到 5 个分析维度，每个维度包含 `name` 和 `rationale`。
+- `subQueries`：4 到 6 条可直接检索的子查询，必须贴合研究主题，避免泛化表述。
+- `retrievalStrategy`：简洁说明内部优先、外部补证的检索策略。
+- `factSchema`：4 到 6 个结构化事实字段，每个字段包含 `name` 和 `description`。
+- `needExternalSearch`：布尔值。
 
-如果输入为中文，默认输出中文内容；如果输入为英文，则按 {{language}} 输出。
+如果输入为中文，默认输出中文内容；如果输入为英文，则按 `{{language}}` 输出。

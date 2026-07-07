@@ -3,7 +3,6 @@ package com.astray.insightflow.eval.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -52,8 +51,7 @@ public class EvaluationRecord {
     @Column(nullable = false)
     private boolean reviewApproved;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String detailsJson;
 
     @Column(nullable = false)

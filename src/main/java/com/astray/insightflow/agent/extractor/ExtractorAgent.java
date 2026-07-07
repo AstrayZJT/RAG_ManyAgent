@@ -10,7 +10,7 @@ public interface ExtractorAgent {
 
     @SystemMessage(fromResource = "prompts/extractor-system.txt")
     @UserMessage(fromResource = "prompts/extractor-user.txt")
-    List<ExtractedFact> extract(
+    ExtractResult extract(
             @V("query") String query,
             @V("language") String language,
             @V("planJson") String planJson,

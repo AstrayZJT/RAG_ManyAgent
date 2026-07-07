@@ -3,7 +3,6 @@ package com.astray.insightflow.observe.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -27,13 +26,13 @@ public class ToolCallLog {
     @Column(nullable = false, length = 32)
     private String status;
 
-    @Lob
+    @Column(columnDefinition = "text")
     private String inputJson;
 
-    @Lob
+    @Column(columnDefinition = "text")
     private String outputJson;
 
-    @Lob
+    @Column(columnDefinition = "text")
     private String metricsJson;
 
     @Column(nullable = false)
