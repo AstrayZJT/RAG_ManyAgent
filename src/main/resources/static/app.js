@@ -1896,6 +1896,28 @@ async function loadTaskBundle(taskId, { beforeNode = state.beforeNode, replaceDa
     if (seq !== taskLoadSeq) {
       return;
     }
+    if (String(error?.message || '').includes('Task not found')) {
+      state.selectedTaskId = '';
+      state.taskDetail = null;
+      state.timeline = null;
+      state.report = null;
+      state.loadingTask = false;
+      state.recoveryPreview = null;
+      state.recoveryPreviewLabel = '';
+      state.previewMode = '';
+      state.resumeCheckpointId = '';
+      state.beforeNode = '';
+      state.liveEvents = [];
+      state.liveEventKeys = new Set();
+      disconnectLiveStream();
+      writeStorage(STORAGE_KEYS.selectedTaskId, '');
+      writeStorage(STORAGE_KEYS.beforeNode, '');
+      writeStorage(STORAGE_KEYS.resumeCheckpointId, '');
+      await refreshTasksList();
+      renderAll();
+      toast('info', '已清理失效任务', '之前缓存的任务不存在，已切回当前任务列表。');
+      return;
+    }
     state.loadingTask = false;
     renderAll();
     toast('error', '加载任务失败', error.message);

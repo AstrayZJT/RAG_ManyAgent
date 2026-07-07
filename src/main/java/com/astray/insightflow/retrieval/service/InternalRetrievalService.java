@@ -15,11 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -49,12 +51,13 @@ public class InternalRetrievalService {
 
         List<Evidence> ranked = new ArrayList<>();
         for (DocumentChunk chunk : documentChunkRepository.findAll()) {
+            KnowledgeDocument document = documentMap.get(chunk.getDocumentId());
+            String title = document == null ? "Internal chunk" : document.getOriginalFilename();
             double score = scoreChunk(chunk.getContent(), queries);
             if (score <= 0) {
                 continue;
             }
-            KnowledgeDocument document = documentMap.get(chunk.getDocumentId());
-            String title = document == null ? "Internal chunk" : document.getOriginalFilename();
+            score += titleBoost(title, queries);
             ranked.add(new Evidence(
                     UUID.randomUUID().toString(),
                     title,
@@ -100,13 +103,39 @@ public class InternalRetrievalService {
             if (query == null || query.isBlank()) {
                 continue;
             }
+            Set<String> matchedTerms = new HashSet<>();
+            for (String token : expandTerms(query)) {
+                if (token.isBlank()) {
+                    continue;
+                }
+                int occurrences = countOccurrences(lowered, token);
+                if (occurrences > 0) {
+                    matchedTerms.add(token);
+                    score += 1.15D + Math.log1p(occurrences);
+                }
+            }
+            score += matchedTerms.size() * 0.35D;
+        }
+        return score;
+    }
+
+    private double titleBoost(String title, List<String> queries) {
+        if (title == null || title.isBlank()) {
+            return 0D;
+        }
+        String lowered = title.toLowerCase(Locale.ROOT);
+        double boost = 0D;
+        for (String query : queries) {
+            if (query == null || query.isBlank()) {
+                continue;
+            }
             for (String token : expandTerms(query)) {
                 if (!token.isBlank() && lowered.contains(token)) {
-                    score += 1;
+                    boost += containsChinese(token) ? 0.45D : 0.25D;
                 }
             }
         }
-        return score;
+        return boost;
     }
 
     private List<String> expandTerms(String query) {
@@ -124,6 +153,20 @@ public class InternalRetrievalService {
             }
         }
         return new ArrayList<>(terms);
+    }
+
+    private int countOccurrences(String content, String term) {
+        int occurrences = 0;
+        int start = 0;
+        while (start >= 0 && start < content.length()) {
+            int found = content.indexOf(term, start);
+            if (found < 0) {
+                break;
+            }
+            occurrences++;
+            start = found + Math.max(1, term.length());
+        }
+        return occurrences;
     }
 
     private boolean containsChinese(String token) {

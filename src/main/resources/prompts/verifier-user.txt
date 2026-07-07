@@ -8,4 +8,4 @@
 证据 JSON：
 {{evidenceJson}}
 
-请输出包含 claims 和 verifyDecision 的结构化结果。
+请输出包含 claims 与 decision 的 VerificationResult。

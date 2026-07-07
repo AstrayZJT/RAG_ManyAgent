@@ -1,11 +1,6 @@
 spring:
   application:
     name: insightflow
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./build/insightflow-db;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE}
-    username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
-    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.h2.Driver}
   jpa:
     hibernate:
       ddl-auto: update
@@ -23,17 +18,27 @@ server:
 langchain4j:
   open-ai:
     chat-model:
-      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-      api-key: ${OPENAI_API_KEY:}
-      model-name: qwen-plus
-      log-requests: true
-      log-responses: true
+      base-url: ${OPENAI_BASE_URL:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_BASE_URL:https://api.openai.com/v1}}
+      api-key: ${OPENAI_API_KEY:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_API_KEY:}}
+      model-name: ${OPENAI_MODEL_NAME:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_MODEL_NAME:gpt-4o-mini}}
+      temperature: ${OPENAI_TEMPERATURE:0.2}
+      max-completion-tokens: ${OPENAI_MAX_COMPLETION_TOKENS:2400}
+      timeout: ${OPENAI_TIMEOUT:PT90S}
+      max-retries: ${OPENAI_MAX_RETRIES:2}
+      strict-json-schema: ${OPENAI_STRICT_JSON_SCHEMA:true}
+      log-requests: ${OPENAI_LOG_REQUESTS:false}
+      log-responses: ${OPENAI_LOG_RESPONSES:false}
 
 agent:
   search:
     max-results: ${AGENT_SEARCH_MAX_RESULTS:5}
+    max-external-results-per-query: ${AGENT_MAX_EXTERNAL_RESULTS_PER_QUERY:4}
+    max-external-pages: ${AGENT_MAX_EXTERNAL_PAGES:8}
+    timeout-ms: ${AGENT_SEARCH_TIMEOUT_MS:15000}
+    user-agent: ${AGENT_SEARCH_USER_AGENT:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 InsightFlow/0.1}
   webpage:
     max-characters: ${AGENT_WEBPAGE_MAX_CHARACTERS:8000}
+    min-characters: ${AGENT_WEBPAGE_MIN_CHARACTERS:240}
 
 rag:
   knowledge-path: ${RAG_KNOWLEDGE_PATH:knowledge}

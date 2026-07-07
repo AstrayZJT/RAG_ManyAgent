@@ -46,12 +46,13 @@ public class ReportService {
     private String toMarkdown(ReportDraft draft) {
         StringBuilder builder = new StringBuilder();
         builder.append("# ").append(draft.getTitle()).append("\n\n");
-        builder.append("## Executive Summary\n");
+        builder.append("## 执行摘要\n");
         builder.append(draft.getExecutiveSummary()).append("\n\n");
+
         for (ReportSection section : draft.getSections()) {
             builder.append("## ").append(section.getHeading());
             if (section.isLowConfidence()) {
-                builder.append(" [Low Confidence]");
+                builder.append(" [低置信度]");
             }
             builder.append("\n");
             builder.append(section.getContent()).append("\n");
@@ -60,7 +61,8 @@ public class ReportService {
             }
             builder.append("\n");
         }
-        builder.append("## Conclusion\n");
+
+        builder.append("## 结论与建议\n");
         builder.append(draft.getClosingSummary()).append("\n\n");
         builder.append("置信度说明：").append(draft.getConfidenceNote()).append("\n");
         if (draft.getReviewSummary() != null && !draft.getReviewSummary().isBlank()) {

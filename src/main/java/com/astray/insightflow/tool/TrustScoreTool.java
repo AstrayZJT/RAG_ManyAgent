@@ -5,10 +5,14 @@ import com.astray.insightflow.retrieval.domain.EvidenceSourceType;
 import com.astray.insightflow.retrieval.model.Evidence;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -42,9 +46,35 @@ public class TrustScoreTool {
         if (evidence.getSourceType() == EvidenceSourceType.INTERNAL) {
             return 0.92D;
         }
-        if (evidence.getUrl() != null && (evidence.getUrl().contains(".gov") || evidence.getUrl().contains(".edu"))) {
-            return 0.88D;
+        String host = hostOf(evidence.getUrl());
+        if (!StringUtils.hasText(host)) {
+            return 0.64D;
         }
-        return 0.68D;
+        if (host.endsWith(".gov") || host.endsWith(".edu")) {
+            return 0.90D;
+        }
+        if (host.contains("reuters") || host.contains("bloomberg") || host.contains("marklines")
+                || host.contains("sec.gov") || host.contains("investor") || host.contains("ir.")) {
+            return 0.84D;
+        }
+        if (host.contains("news.") || host.contains("finance.") || host.contains("press")) {
+            return 0.78D;
+        }
+        if (host.contains("zhihu") || host.contains("weibo") || host.contains("toutiao") || host.contains("bilibili")) {
+            return 0.62D;
+        }
+        return 0.72D;
+    }
+
+    private String hostOf(String url) {
+        if (!StringUtils.hasText(url)) {
+            return "";
+        }
+        try {
+            URI uri = new URI(url);
+            return uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        } catch (URISyntaxException exception) {
+            return "";
+        }
     }
 }

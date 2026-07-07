@@ -14,6 +14,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -68,7 +72,7 @@ public class KnowledgeDocumentService {
 
         try {
             documentChunkRepository.deleteByDocumentId(documentId);
-            String content = Files.readString(Path.of(document.getStoragePath()), StandardCharsets.UTF_8);
+            String content = readDocumentContent(Path.of(document.getStoragePath()));
             List<String> chunks = splitIntoChunks(content, 800);
             List<DocumentChunk> entities = new ArrayList<>();
             for (int index = 0; index < chunks.size(); index++) {
@@ -101,6 +105,26 @@ public class KnowledgeDocumentService {
 
     public List<KnowledgeDocument> listDocuments() {
         return knowledgeDocumentRepository.findAllByOrderByUploadedAtDesc();
+    }
+
+    private String readDocumentContent(Path path) throws IOException {
+        byte[] bytes = Files.readAllBytes(path);
+        List<Charset> candidates = List.of(
+                StandardCharsets.UTF_8,
+                Charset.forName("GB18030"),
+                Charset.forName("GBK")
+        );
+        for (Charset charset : candidates) {
+            try {
+                return charset.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(bytes))
+                        .toString();
+            } catch (CharacterCodingException ignored) {
+            }
+        }
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     private List<String> splitIntoChunks(String content, int maxLength) {

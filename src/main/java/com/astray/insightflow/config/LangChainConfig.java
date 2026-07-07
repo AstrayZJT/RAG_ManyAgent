@@ -76,6 +76,11 @@ public class LangChainConfig {
                 .baseUrl(properties.baseUrl())
                 .apiKey(properties.apiKey())
                 .modelName(properties.modelName())
+                .temperature(properties.temperature())
+                .maxCompletionTokens(properties.maxCompletionTokens())
+                .timeout(properties.timeout())
+                .maxRetries(properties.maxRetries())
+                .strictJsonSchema(properties.strictJsonSchema())
                 .logRequests(properties.logRequests())
                 .logResponses(properties.logResponses())
                 .build();

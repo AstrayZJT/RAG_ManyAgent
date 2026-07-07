@@ -21,7 +21,7 @@ public class WebSearchTool {
         this.toolCallLogService = toolCallLogService;
     }
 
-    @Tool("Runs placeholder external search for future web evidence enrichment")
+    @Tool("Searches external webpages and returns evidence candidates")
     public List<Evidence> search(String taskId, String nodeName, List<String> queries, boolean enabled) {
         Instant startedAt = Instant.now();
         Map<String, Object> input = Map.of("queries", queries, "enabled", enabled);

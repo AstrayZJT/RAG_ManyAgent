@@ -1,5 +1,6 @@
 研究目标：{{query}}
 输出语言：{{language}}
+
 研究计划 JSON：
 {{planJson}}
 
@@ -9,4 +10,4 @@
 证据 JSON：
 {{evidenceJson}}
 
-请根据这些信息生成首版报告草稿。
+请生成一份正式、结构化、可引用的 ReportDraft。
