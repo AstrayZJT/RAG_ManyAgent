@@ -7,8 +7,10 @@ import com.astray.insightflow.eval.service.EvaluationService;
 import com.astray.insightflow.graph.TaskGraphExecutor;
 import com.astray.insightflow.observe.api.TaskTimelineResponse;
 import com.astray.insightflow.observe.service.TaskTimelineService;
+import com.astray.insightflow.report.api.ReportCitationResponse;
 import com.astray.insightflow.report.api.ReportResponse;
 import com.astray.insightflow.report.service.ReportService;
+import com.astray.insightflow.retrieval.persistence.EvidenceRecordRepository;
 import com.astray.insightflow.task.domain.ResearchTask;
 import com.astray.insightflow.task.service.TaskProgressPublisher;
 import com.astray.insightflow.task.service.TaskService;
@@ -38,6 +40,7 @@ public class TaskController {
     private final ReportService reportService;
     private final TaskTimelineService taskTimelineService;
     private final EvaluationService evaluationService;
+    private final EvidenceRecordRepository evidenceRecordRepository;
     private final JsonUtils jsonUtils;
 
     public TaskController(TaskService taskService,
@@ -46,6 +49,7 @@ public class TaskController {
                           ReportService reportService,
                           TaskTimelineService taskTimelineService,
                           EvaluationService evaluationService,
+                          EvidenceRecordRepository evidenceRecordRepository,
                           JsonUtils jsonUtils) {
         this.taskService = taskService;
         this.taskGraphExecutor = taskGraphExecutor;
@@ -53,6 +57,7 @@ public class TaskController {
         this.reportService = reportService;
         this.taskTimelineService = taskTimelineService;
         this.evaluationService = evaluationService;
+        this.evidenceRecordRepository = evidenceRecordRepository;
         this.jsonUtils = jsonUtils;
     }
 
@@ -127,7 +132,10 @@ public class TaskController {
                 report.getTitle(),
                 report.getReportMarkdown(),
                 draft,
-                report.getUpdatedAt()
+                report.getUpdatedAt(),
+                evidenceRecordRepository.findByTaskIdOrderByScoreDescCreatedAtAsc(taskId).stream()
+                        .map(ReportCitationResponse::from)
+                        .toList()
         ));
     }
 

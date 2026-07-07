@@ -193,9 +193,7 @@ textarea {
 }
 
 .topbar {
-  position: sticky;
-  top: 20px;
-  z-index: 20;
+  position: static;
   padding: 18px 20px;
   display: flex;
   justify-content: space-between;
@@ -249,6 +247,7 @@ textarea {
   justify-content: center;
   gap: 8px;
   font-weight: 600;
+  white-space: nowrap;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
@@ -1024,6 +1023,72 @@ textarea:focus {
   font-size: 13px;
 }
 
+.citation-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.citation-list.is-library {
+  margin-top: 12px;
+}
+
+.citation-list-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.citation-item {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0 10px 12px;
+  border-left: 3px solid rgba(15, 118, 110, 0.28);
+}
+
+.citation-item.is-missing {
+  border-left-color: rgba(180, 83, 9, 0.34);
+}
+
+.citation-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.citation-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.citation-meta {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.citation-snippet {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.citation-link {
+  flex: 0 0 auto;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.citation-link:hover {
+  text-decoration: underline;
+}
+
 .report-markdown {
   display: grid;
   gap: 12px;
@@ -1276,10 +1341,6 @@ textarea:focus {
       "inspector inspector";
   }
 
-  .topbar {
-    position: static;
-  }
-
   .feed {
     max-height: none;
   }
@@ -1307,17 +1368,24 @@ textarea:focus {
 
   .topbar {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .title-group h1 {
+    font-size: 22px;
+    line-height: 1.15;
   }
 
   .topbar-actions {
+    width: 100%;
     justify-content: flex-start;
   }
 
   .shell {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "workspace"
       "sidebar"
+      "workspace"
       "inspector";
   }
 

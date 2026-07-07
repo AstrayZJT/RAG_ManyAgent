@@ -615,6 +615,61 @@ function renderChips(values, tone = '') {
   return items.map((value) => renderChip(value, tone)).join('');
 }
 
+function sourceTypeLabel(value) {
+  const map = {
+    INTERNAL: '知识库',
+    EXTERNAL: '网页'
+  };
+  return map[String(value || '').toUpperCase()] || '来源';
+}
+
+function renderCitationItem(citation, fallbackId = '') {
+  if (!citation) {
+    return `
+      <div class="citation-item is-missing">
+        <div class="citation-title">未找到引用详情</div>
+        <div class="citation-meta">${escapeHtml(fallbackId)}</div>
+      </div>
+    `;
+  }
+
+  const source = sourceTypeLabel(citation.sourceType);
+  const title = citation.title || citation.id || '未命名来源';
+  const score = Number.isFinite(Number(citation.score)) ? `相关度 ${formatNumber(citation.score, 2)}` : '';
+  const meta = [source, score, citation.documentId ? `文档 ${shortId(citation.documentId)}` : '', citation.chunkId ? `片段 ${shortId(citation.chunkId)}` : '']
+    .filter(Boolean)
+    .join(' · ');
+  const link = citation.url
+    ? `<a class="citation-link" href="${escapeAttribute(citation.url)}" target="_blank" rel="noopener noreferrer">打开来源</a>`
+    : '';
+
+  return `
+    <div class="citation-item">
+      <div class="citation-item-head">
+        <div>
+          <div class="citation-title">${escapeHtml(title)}</div>
+          <div class="citation-meta">${escapeHtml(meta || citation.id || '引用来源')}</div>
+        </div>
+        ${link}
+      </div>
+      ${citation.snippet ? `<p class="citation-snippet">${escapeHtml(citation.snippet)}</p>` : ''}
+    </div>
+  `;
+}
+
+function renderSectionCitations(evidenceIds, citationIndex) {
+  const ids = safeArray(evidenceIds).filter(Boolean);
+  if (!ids.length) {
+    return '';
+  }
+  return `
+    <div class="citation-list">
+      <div class="citation-list-label">本节引用</div>
+      ${ids.map((id) => renderCitationItem(citationIndex.get(String(id)), id)).join('')}
+    </div>
+  `;
+}
+
 function renderPairs(source, emptyLabel = '暂无数据') {
   const entries = Object.entries(safeObject(source));
   if (!entries.length) {
@@ -1228,6 +1283,8 @@ function renderReportTab() {
 
   const draft = state.report.draft || {};
   const sections = safeArray(draft.sections);
+  const citations = safeArray(state.report.citations);
+  const citationIndex = new Map(citations.map((citation) => [String(citation.id), citation]));
   const sectionGrid = sections.length ? sections.map((section) => `
     <article class="report-section ${section.lowConfidence ? 'is-low-confidence' : ''}">
       <div class="summary-head">
@@ -1239,8 +1296,23 @@ function renderReportTab() {
       </div>
       <div style="font-size:13px;white-space:pre-wrap;">${renderMarkdown(section.content || '')}</div>
       <div class="report-chip-row">${renderChips(section.evidenceIds || [], 'secondary')}</div>
+      ${renderSectionCitations(section.evidenceIds || [], citationIndex)}
     </article>
   `).join('') : renderEmptyState('暂无报告章节', '写作者还没有把报告拆成章节。');
+  const citationLibrary = citations.length ? `
+    <div class="summary-card">
+      <div class="summary-head">
+        <div>
+          <h3>引用来源</h3>
+          <p>报告章节关联到的证据详情</p>
+        </div>
+        ${renderPill(`${citations.length} 条来源`, 'info')}
+      </div>
+      <div class="citation-list is-library">
+        ${citations.map((citation) => renderCitationItem(citation)).join('')}
+      </div>
+    </div>
+  ` : '';
   els.tabReport.innerHTML = `
     <div class="summary-card">
       <div class="report-head">
@@ -1262,6 +1334,8 @@ function renderReportTab() {
     <div class="overview-grid">
       ${sectionGrid}
     </div>
+
+    ${citationLibrary}
 
     <div class="summary-card">
       <div class="summary-head">
