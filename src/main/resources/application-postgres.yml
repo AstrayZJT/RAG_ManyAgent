@@ -1,4 +1,9 @@
 spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/postgres
+    baseline-on-migrate: true
+    baseline-version: 0
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:agentdemo}
     username: ${DB_USERNAME:postgres}
@@ -17,3 +22,5 @@ rag:
     username: ${RAG_PGVECTOR_USERNAME:${DB_USERNAME:postgres}}
     password: ${RAG_PGVECTOR_PASSWORD:${DB_PASSWORD:}}
     table: ${RAG_PGVECTOR_TABLE:knowledge_embeddings}
+    use-index: ${RAG_PGVECTOR_USE_INDEX:false}
+    index-list-size: ${RAG_PGVECTOR_INDEX_LIST_SIZE:100}

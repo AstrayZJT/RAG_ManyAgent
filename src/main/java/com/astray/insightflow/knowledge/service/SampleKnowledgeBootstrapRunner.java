@@ -65,6 +65,7 @@ public class SampleKnowledgeBootstrapRunner implements ApplicationRunner {
             document.setId(UUID.randomUUID().toString());
             document.setOriginalFilename("新能源车竞品样例-" + index + ".txt");
             document.setStoragePath(sample.toAbsolutePath().toString());
+            document.setCollectionName(KnowledgeDocumentService.DEFAULT_COLLECTION);
             document.setMediaType("text/plain");
             document.setStatus(KnowledgeDocumentStatus.UPLOADED);
             document.setUploadedAt(Instant.now());

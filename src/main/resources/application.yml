@@ -1,6 +1,8 @@
 spring:
   application:
     name: insightflow
+  flyway:
+    enabled: false
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,7 +22,7 @@ langchain4j:
     chat-model:
       base-url: ${OPENAI_BASE_URL:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}}
       api-key: ${OPENAI_API_KEY:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_API_KEY:}}
-      model-name: ${OPENAI_MODEL_NAME:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_MODEL_NAME:qwen-plus}}
+      model-name: ${OPENAI_MODEL_NAME:${LANGCHAIN4J_OPEN_AI_CHAT_MODEL_MODEL_NAME:qwen3.7-plus}}
       temperature: ${OPENAI_TEMPERATURE:0.2}
       max-completion-tokens: ${OPENAI_MAX_COMPLETION_TOKENS:2400}
       timeout: ${OPENAI_TIMEOUT:PT90S}
@@ -42,6 +44,32 @@ agent:
 
 rag:
   knowledge-path: ${RAG_KNOWLEDGE_PATH:knowledge}
+  chunking:
+    max-length: ${RAG_CHUNK_MAX_LENGTH:800}
+    overlap: ${RAG_CHUNK_OVERLAP:120}
+  embedding:
+    enabled: ${RAG_EMBEDDING_ENABLED:false}
+    base-url: ${RAG_EMBEDDING_BASE_URL:${OPENAI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}}
+    api-key: ${RAG_EMBEDDING_API_KEY:${OPENAI_API_KEY:}}
+    model-name: ${RAG_EMBEDDING_MODEL_NAME:text-embedding-v4}
+    dimension: ${RAG_EMBEDDING_DIMENSION:1024}
+    timeout: ${RAG_EMBEDDING_TIMEOUT:PT60S}
+    max-retries: ${RAG_EMBEDDING_MAX_RETRIES:2}
+    max-results: ${RAG_EMBEDDING_MAX_RESULTS:20}
+    min-score: ${RAG_EMBEDDING_MIN_SCORE:0.55}
+  retrieval:
+    keyword-weight: ${RAG_KEYWORD_WEIGHT:0.45}
+    vector-weight: ${RAG_VECTOR_WEIGHT:0.55}
+    rrf-k: ${RAG_RRF_K:60}
+    candidate-multiplier: ${RAG_CANDIDATE_MULTIPLIER:4}
+  rerank:
+    enabled: ${RAG_RERANK_ENABLED:false}
+    base-url: ${RAG_RERANK_BASE_URL:https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank}
+    api-key: ${RAG_RERANK_API_KEY:${OPENAI_API_KEY:}}
+    model-name: ${RAG_RERANK_MODEL_NAME:gte-rerank-v2}
+    candidate-count: ${RAG_RERANK_CANDIDATE_COUNT:20}
+    top-n: ${RAG_RERANK_TOP_N:5}
+    timeout: ${RAG_RERANK_TIMEOUT:PT60S}
   pgvector:
     host: ${RAG_PGVECTOR_HOST:localhost}
     port: ${RAG_PGVECTOR_PORT:5432}
@@ -49,6 +77,8 @@ rag:
     username: ${RAG_PGVECTOR_USERNAME:postgres}
     password: ${RAG_PGVECTOR_PASSWORD:}
     table: ${RAG_PGVECTOR_TABLE:knowledge_embeddings}
+    use-index: ${RAG_PGVECTOR_USE_INDEX:false}
+    index-list-size: ${RAG_PGVECTOR_INDEX_LIST_SIZE:100}
 
 infrastructure:
   redis:

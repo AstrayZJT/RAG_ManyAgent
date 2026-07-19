@@ -136,7 +136,7 @@
 #### 真实运行验证
 - 运行环境：
   - PostgreSQL `agentdemo`
-  - `qwen-plus`
+  - `glm-5`
   - Spring Profile=`postgres`
 - 真实任务已经可以稳定跑完整条链路：
   - `planner -> retrieval -> extract -> verify -> write -> review`

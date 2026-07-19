@@ -36,8 +36,31 @@ public class EvidenceRecord {
 
     private String chunkId;
 
+    @Column(length = 64)
+    private String documentHash;
+
+    @Column(length = 64)
+    private String chunkHash;
+
+    private Integer chunkIndex;
+
+    private Integer startOffset;
+
+    private Integer endOffset;
+
     @Column(nullable = false)
     private double score;
+
+    private Double lexicalScore;
+
+    private Double vectorScore;
+
+    private Double titleBoost;
+
+    private Double rerankScore;
+
+    @Column(length = 64)
+    private String retrievalStrategy;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -106,12 +129,92 @@ public class EvidenceRecord {
         this.chunkId = chunkId;
     }
 
+    public String getDocumentHash() {
+        return documentHash;
+    }
+
+    public void setDocumentHash(String documentHash) {
+        this.documentHash = documentHash;
+    }
+
+    public String getChunkHash() {
+        return chunkHash;
+    }
+
+    public void setChunkHash(String chunkHash) {
+        this.chunkHash = chunkHash;
+    }
+
+    public Integer getChunkIndex() {
+        return chunkIndex;
+    }
+
+    public void setChunkIndex(Integer chunkIndex) {
+        this.chunkIndex = chunkIndex;
+    }
+
+    public Integer getStartOffset() {
+        return startOffset;
+    }
+
+    public void setStartOffset(Integer startOffset) {
+        this.startOffset = startOffset;
+    }
+
+    public Integer getEndOffset() {
+        return endOffset;
+    }
+
+    public void setEndOffset(Integer endOffset) {
+        this.endOffset = endOffset;
+    }
+
     public double getScore() {
         return score;
     }
 
     public void setScore(double score) {
         this.score = score;
+    }
+
+    public Double getLexicalScore() {
+        return lexicalScore;
+    }
+
+    public void setLexicalScore(Double lexicalScore) {
+        this.lexicalScore = lexicalScore;
+    }
+
+    public Double getVectorScore() {
+        return vectorScore;
+    }
+
+    public void setVectorScore(Double vectorScore) {
+        this.vectorScore = vectorScore;
+    }
+
+    public Double getTitleBoost() {
+        return titleBoost;
+    }
+
+    public void setTitleBoost(Double titleBoost) {
+        this.titleBoost = titleBoost;
+    }
+
+    public Double getRerankScore() {
+        return rerankScore;
+    }
+
+    public void setRerankScore(Double rerankScore) {
+        this.rerankScore = rerankScore;
+    }
+
+    public String getRetrievalStrategy() {
+        return retrievalStrategy;
+    }
+
+    public void setRetrievalStrategy(String retrievalStrategy) {
+        this.retrievalStrategy = retrievalStrategy;
     }
 
     public Instant getCreatedAt() {

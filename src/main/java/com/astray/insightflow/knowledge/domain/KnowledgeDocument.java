@@ -22,6 +22,12 @@ public class KnowledgeDocument {
     @Column(nullable = false, length = 1024)
     private String storagePath;
 
+    @Column(length = 64)
+    private String contentHash;
+
+    @Column(length = 128)
+    private String collectionName;
+
     @Column(length = 255)
     private String mediaType;
 
@@ -59,6 +65,22 @@ public class KnowledgeDocument {
 
     public void setStoragePath(String storagePath) {
         this.storagePath = storagePath;
+    }
+
+    public String getContentHash() {
+        return contentHash;
+    }
+
+    public void setContentHash(String contentHash) {
+        this.contentHash = contentHash;
+    }
+
+    public String getCollectionName() {
+        return collectionName;
+    }
+
+    public void setCollectionName(String collectionName) {
+        this.collectionName = collectionName;
     }
 
     public String getMediaType() {

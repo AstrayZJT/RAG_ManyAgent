@@ -40,4 +40,12 @@ public class DocumentController {
     public ResponseEntity<DocumentResponse> index(@PathVariable("id") String documentId) throws Exception {
         return ResponseEntity.ok(DocumentResponse.from(knowledgeDocumentService.index(documentId)));
     }
+
+    @GetMapping("/{id}/chunks")
+    public ResponseEntity<List<DocumentChunkResponse>> chunks(@PathVariable("id") String documentId) {
+        List<DocumentChunkResponse> responses = knowledgeDocumentService.listChunks(documentId).stream()
+                .map(DocumentChunkResponse::from)
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
 }

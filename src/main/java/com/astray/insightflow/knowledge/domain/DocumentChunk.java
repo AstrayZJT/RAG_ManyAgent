@@ -20,6 +20,13 @@ public class DocumentChunk {
     @Column(nullable = false)
     private int chunkIndex;
 
+    private Integer startOffset;
+
+    private Integer endOffset;
+
+    @Column(length = 64)
+    private String contentHash;
+
     @Column(nullable = false, columnDefinition = "text")
     private String content;
 
@@ -51,6 +58,30 @@ public class DocumentChunk {
 
     public void setChunkIndex(int chunkIndex) {
         this.chunkIndex = chunkIndex;
+    }
+
+    public Integer getStartOffset() {
+        return startOffset;
+    }
+
+    public void setStartOffset(Integer startOffset) {
+        this.startOffset = startOffset;
+    }
+
+    public Integer getEndOffset() {
+        return endOffset;
+    }
+
+    public void setEndOffset(Integer endOffset) {
+        this.endOffset = endOffset;
+    }
+
+    public String getContentHash() {
+        return contentHash;
+    }
+
+    public void setContentHash(String contentHash) {
+        this.contentHash = contentHash;
     }
 
     public String getContent() {

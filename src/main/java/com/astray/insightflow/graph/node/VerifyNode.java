@@ -15,6 +15,7 @@ import com.astray.insightflow.observe.service.AgentRunLogService;
 import com.astray.insightflow.retrieval.model.Evidence;
 import com.astray.insightflow.task.service.TaskProgressPublisher;
 import com.astray.insightflow.tool.CitationTool;
+import com.astray.insightflow.tool.CitationGuardTool;
 import com.astray.insightflow.tool.TrustScoreTool;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class VerifyNode {
 
     private final VerifierAgent verifierAgent;
     private final CitationTool citationTool;
+    private final CitationGuardTool citationGuardTool;
     private final TrustScoreTool trustScoreTool;
     private final VerifiedClaimRepository verifiedClaimRepository;
     private final JsonUtils jsonUtils;
@@ -38,6 +40,7 @@ public class VerifyNode {
 
     public VerifyNode(VerifierAgent verifierAgent,
                       CitationTool citationTool,
+                      CitationGuardTool citationGuardTool,
                       TrustScoreTool trustScoreTool,
                       VerifiedClaimRepository verifiedClaimRepository,
                       JsonUtils jsonUtils,
@@ -46,6 +49,7 @@ public class VerifyNode {
                       AgentRunLogService agentRunLogService) {
         this.verifierAgent = verifierAgent;
         this.citationTool = citationTool;
+        this.citationGuardTool = citationGuardTool;
         this.trustScoreTool = trustScoreTool;
         this.verifiedClaimRepository = verifiedClaimRepository;
         this.jsonUtils = jsonUtils;
@@ -73,6 +77,13 @@ public class VerifyNode {
             );
 
             List<VerifiedClaim> claims = citationTool.attach(taskId, "verify", verification.getClaims(), state.mergedEvidences());
+            CitationGuardTool.ClaimValidationResult citationValidation = citationGuardTool.validateClaims(
+                    taskId,
+                    "verify",
+                    claims,
+                    state.mergedEvidences()
+            );
+            claims = citationValidation.claims();
             Map<String, Double> trustScores = trustScoreTool.scoreBatch(taskId, "verify", state.mergedEvidences());
             double averageConfidence = applyTrustScores(claims, state.mergedEvidences(), trustScores);
             double citationCoverage = MetricsUtils.citationCoverage(claims);
@@ -112,7 +123,9 @@ public class VerifyNode {
             Map<String, Object> metrics = Map.of(
                     "tokenUsage", MetricsUtils.estimateTokens(factsJson, evidenceJson),
                     "citationCoverage", citationCoverage,
-                    "avgClaimConfidence", averageConfidence
+                    "avgClaimConfidence", averageConfidence,
+                    "invalidCitationCount", citationValidation.invalidCitationCount(),
+                    "unsupportedClaimCount", citationValidation.unsupportedClaimCount()
             );
 
             Map<String, Object> output = new LinkedHashMap<>();

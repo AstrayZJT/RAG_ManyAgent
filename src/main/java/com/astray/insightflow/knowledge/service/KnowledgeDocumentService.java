@@ -7,6 +7,7 @@ import com.astray.insightflow.knowledge.domain.KnowledgeDocument;
 import com.astray.insightflow.knowledge.domain.KnowledgeDocumentStatus;
 import com.astray.insightflow.knowledge.persistence.DocumentChunkRepository;
 import com.astray.insightflow.knowledge.persistence.KnowledgeDocumentRepository;
+import com.astray.insightflow.retrieval.vector.VectorSearchService;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,24 +22,37 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 public class KnowledgeDocumentService {
 
+    public static final String DEFAULT_COLLECTION = "default";
+    private static final String SOFT_BOUNDARY_CHARS = "\n.!?;,:)]\u3002\uff01\uff1f\uff1b\uff0c\uff1a\uff09\uff3d";
+
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final DocumentChunkRepository documentChunkRepository;
+    private final VectorSearchService vectorSearchService;
     private final Path storageRoot;
+    private final int chunkMaxLength;
+    private final int chunkOverlap;
 
     public KnowledgeDocumentService(KnowledgeDocumentRepository knowledgeDocumentRepository,
                                     DocumentChunkRepository documentChunkRepository,
-                                    RagProperties ragProperties) throws IOException {
+                                    RagProperties ragProperties,
+                                    VectorSearchService vectorSearchService) throws IOException {
         this.knowledgeDocumentRepository = knowledgeDocumentRepository;
         this.documentChunkRepository = documentChunkRepository;
+        this.vectorSearchService = vectorSearchService;
         this.storageRoot = Path.of(ragProperties.knowledgePath()).toAbsolutePath();
+        this.chunkMaxLength = ragProperties.chunking().maxLength();
+        this.chunkOverlap = ragProperties.chunking().overlap();
         Files.createDirectories(this.storageRoot.resolve("raw"));
     }
 
@@ -57,6 +71,8 @@ public class KnowledgeDocumentService {
         document.setId(documentId);
         document.setOriginalFilename(StringUtils.hasText(file.getOriginalFilename()) ? file.getOriginalFilename() : storedName);
         document.setStoragePath(target.toString());
+        document.setContentHash(sha256Hex(target));
+        document.setCollectionName(DEFAULT_COLLECTION);
         document.setMediaType(file.getContentType());
         document.setStatus(KnowledgeDocumentStatus.UPLOADED);
         document.setUploadedAt(Instant.now());
@@ -67,25 +83,37 @@ public class KnowledgeDocumentService {
     public KnowledgeDocument index(String documentId) throws IOException {
         KnowledgeDocument document = knowledgeDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new NotFoundException("Document not found: " + documentId));
+        Path sourcePath = Path.of(document.getStoragePath());
+        if (!StringUtils.hasText(document.getContentHash())) {
+            document.setContentHash(sha256Hex(sourcePath));
+        }
         document.setStatus(KnowledgeDocumentStatus.INDEXING);
         knowledgeDocumentRepository.save(document);
 
         try {
+            List<String> staleChunkIds = documentChunkRepository.findByDocumentIdOrderByChunkIndexAsc(documentId).stream()
+                    .map(DocumentChunk::getId)
+                    .toList();
             documentChunkRepository.deleteByDocumentId(documentId);
-            String content = readDocumentContent(Path.of(document.getStoragePath()));
-            List<String> chunks = splitIntoChunks(content, 800);
+            String content = readDocumentContent(sourcePath);
+            List<ChunkSlice> chunks = splitIntoChunks(content, chunkMaxLength, chunkOverlap);
             List<DocumentChunk> entities = new ArrayList<>();
             for (int index = 0; index < chunks.size(); index++) {
+                ChunkSlice slice = chunks.get(index);
                 DocumentChunk chunk = new DocumentChunk();
                 chunk.setId(UUID.randomUUID().toString());
                 chunk.setDocumentId(documentId);
                 chunk.setChunkIndex(index);
-                chunk.setContent(chunks.get(index));
-                chunk.setTokenCount(chunks.get(index).length());
+                chunk.setStartOffset(slice.startOffset());
+                chunk.setEndOffset(slice.endOffset());
+                chunk.setContentHash(sha256Hex(slice.content()));
+                chunk.setContent(slice.content());
+                chunk.setTokenCount(slice.content().length());
                 chunk.setCreatedAt(Instant.now());
                 entities.add(chunk);
             }
             documentChunkRepository.saveAll(entities);
+            vectorSearchService.replaceDocumentChunks(staleChunkIds, entities, document.getCollectionName());
             document.setStatus(KnowledgeDocumentStatus.INDEXED);
             document.setIndexedAt(Instant.now());
             document.setErrorMessage(null);
@@ -105,6 +133,52 @@ public class KnowledgeDocumentService {
 
     public List<KnowledgeDocument> listDocuments() {
         return knowledgeDocumentRepository.findAllByOrderByUploadedAtDesc();
+    }
+
+    @Transactional
+    public KnowledgeDocument importText(String filename,
+                                        String content,
+                                        String collectionName,
+                                        boolean forceReindex) throws IOException {
+        if (!StringUtils.hasText(content)) {
+            throw new IllegalArgumentException("Imported document content is empty");
+        }
+        String normalizedCollection = StringUtils.hasText(collectionName)
+                ? collectionName.trim()
+                : DEFAULT_COLLECTION;
+        String contentHash = sha256Hex(content);
+        KnowledgeDocument existing = knowledgeDocumentRepository
+                .findFirstByCollectionNameAndContentHash(normalizedCollection, contentHash)
+                .orElse(null);
+        if (existing != null) {
+            if (forceReindex || existing.getStatus() != KnowledgeDocumentStatus.INDEXED) {
+                return index(existing.getId());
+            }
+            return existing;
+        }
+
+        String documentId = UUID.randomUUID().toString();
+        Path target = storageRoot.resolve("raw").resolve(documentId + ".txt");
+        Files.writeString(target, content, StandardCharsets.UTF_8);
+
+        KnowledgeDocument document = new KnowledgeDocument();
+        document.setId(documentId);
+        document.setOriginalFilename(StringUtils.hasText(filename) ? filename.trim() : documentId + ".txt");
+        document.setStoragePath(target.toString());
+        document.setContentHash(contentHash);
+        document.setCollectionName(normalizedCollection);
+        document.setMediaType("text/plain");
+        document.setStatus(KnowledgeDocumentStatus.UPLOADED);
+        document.setUploadedAt(Instant.now());
+        knowledgeDocumentRepository.save(document);
+        return index(documentId);
+    }
+
+    public List<DocumentChunk> listChunks(String documentId) {
+        if (!knowledgeDocumentRepository.existsById(documentId)) {
+            throw new NotFoundException("Document not found: " + documentId);
+        }
+        return documentChunkRepository.findByDocumentIdOrderByChunkIndexAsc(documentId);
     }
 
     String readDocumentContent(Path path) throws IOException {
@@ -127,18 +201,77 @@ public class KnowledgeDocumentService {
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
-    private List<String> splitIntoChunks(String content, int maxLength) {
+    List<ChunkSlice> splitIntoChunks(String content, int maxLength, int overlap) {
         if (!StringUtils.hasText(content)) {
             return List.of();
         }
-        String normalized = content.replace("\r\n", "\n").trim();
-        List<String> chunks = new ArrayList<>();
-        int start = 0;
-        while (start < normalized.length()) {
-            int end = Math.min(start + maxLength, normalized.length());
-            chunks.add(normalized.substring(start, end));
-            start = end;
+        List<ChunkSlice> chunks = new ArrayList<>();
+        int contentEnd = trimTrailingWhitespace(content, 0, content.length());
+        int start = skipLeadingWhitespace(content, 0, contentEnd);
+        while (start < contentEnd) {
+            int end = findChunkEnd(content, start, contentEnd, maxLength);
+            int sliceStart = skipLeadingWhitespace(content, start, end);
+            int sliceEnd = trimTrailingWhitespace(content, sliceStart, end);
+            if (sliceStart < sliceEnd) {
+                chunks.add(new ChunkSlice(content.substring(sliceStart, sliceEnd), sliceStart, sliceEnd));
+            }
+            if (end >= contentEnd) {
+                break;
+            }
+            start = Math.max(end - Math.max(0, overlap), start + 1);
+            start = skipLeadingWhitespace(content, start, contentEnd);
         }
         return chunks;
+    }
+
+    private int findChunkEnd(String content, int start, int contentEnd, int maxLength) {
+        int hardEnd = Math.min(start + maxLength, contentEnd);
+        if (hardEnd >= contentEnd) {
+            return contentEnd;
+        }
+        int softFloor = start + Math.max(120, (int) (maxLength * 0.55D));
+        for (int index = hardEnd - 1; index >= softFloor; index--) {
+            char current = content.charAt(index);
+            if (SOFT_BOUNDARY_CHARS.indexOf(current) >= 0) {
+                return index + 1;
+            }
+        }
+        return hardEnd;
+    }
+
+    private int skipLeadingWhitespace(String value, int start, int end) {
+        int index = Math.max(0, start);
+        while (index < end && Character.isWhitespace(value.charAt(index))) {
+            index++;
+        }
+        return index;
+    }
+
+    private int trimTrailingWhitespace(String value, int start, int end) {
+        int index = Math.min(value.length(), end);
+        while (index > start && Character.isWhitespace(value.charAt(index - 1))) {
+            index--;
+        }
+        return index;
+    }
+
+    private String sha256Hex(Path path) throws IOException {
+        return sha256Hex(Files.readAllBytes(path));
+    }
+
+    private String sha256Hex(String value) {
+        return sha256Hex(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String sha256Hex(byte[] bytes) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(bytes));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 digest is not available", exception);
+        }
+    }
+
+    record ChunkSlice(String content, int startOffset, int endOffset) {
     }
 }

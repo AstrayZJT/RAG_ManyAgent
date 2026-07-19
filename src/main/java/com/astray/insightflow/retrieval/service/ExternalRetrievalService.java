@@ -6,18 +6,13 @@ import com.astray.insightflow.retrieval.domain.EvidenceSourceType;
 import com.astray.insightflow.retrieval.model.Evidence;
 import com.astray.insightflow.retrieval.persistence.EvidenceRecordRepository;
 import com.astray.insightflow.tool.WebFetchTool;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -32,6 +27,8 @@ import java.util.regex.Pattern;
 
 @Service
 public class ExternalRetrievalService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExternalRetrievalService.class);
 
     private static final Pattern YEAR_PATTERN = Pattern.compile("20\\d{2}");
     private static final Pattern ENGLISH_TOKEN_PATTERN = Pattern.compile("[A-Za-z][A-Za-z0-9+._-]{1,}");
@@ -50,20 +47,24 @@ public class ExternalRetrievalService {
 
     private final WebFetchTool webFetchTool;
     private final EvidenceRecordRepository evidenceRecordRepository;
-    private final int maxExternalResultsPerQuery;
     private final int maxExternalPages;
-    private final int timeoutMs;
-    private final String userAgent;
+    private final List<SearchProvider> searchProviders;
 
+    @Autowired
     public ExternalRetrievalService(WebFetchTool webFetchTool,
                                     EvidenceRecordRepository evidenceRecordRepository,
-                                    AgentProperties agentProperties) {
+                                    AgentProperties agentProperties,
+                                    List<SearchProvider> searchProviders) {
         this.webFetchTool = webFetchTool;
         this.evidenceRecordRepository = evidenceRecordRepository;
-        this.maxExternalResultsPerQuery = agentProperties.search().maxExternalResultsPerQuery();
         this.maxExternalPages = agentProperties.search().maxExternalPages();
-        this.timeoutMs = agentProperties.search().timeoutMs();
-        this.userAgent = agentProperties.search().userAgent();
+        this.searchProviders = List.copyOf(searchProviders);
+    }
+
+    ExternalRetrievalService(WebFetchTool webFetchTool,
+                             EvidenceRecordRepository evidenceRecordRepository,
+                             AgentProperties agentProperties) {
+        this(webFetchTool, evidenceRecordRepository, agentProperties, List.of());
     }
 
     @Transactional
@@ -160,252 +161,17 @@ public class ExternalRetrievalService {
     }
 
     private List<SearchHit> searchExternalSources(String originalQuery, String searchQuery) {
-        List<SearchHit> hits = searchSogou(originalQuery, searchQuery);
-        if (!hits.isEmpty()) {
-            return hits;
-        }
-        hits = searchBing(originalQuery, searchQuery);
-        if (!hits.isEmpty()) {
-            return hits;
-        }
-        return searchDuckDuckGo(originalQuery, searchQuery);
-    }
-
-    List<SearchHit> searchSogou(String originalQuery, String searchQuery) {
-        try {
-            Document document = Jsoup.connect("https://www.sogou.com/web")
-                    .data("query", searchQuery)
-                    .data("ie", "utf8")
-                    .userAgent(userAgent)
-                    .timeout(timeoutMs)
-                    .referrer("https://www.sogou.com/")
-                    .followRedirects(true)
-                    .get();
-
-            return parseSogouResults(document, originalQuery);
-        } catch (IOException exception) {
-            return List.of();
-        }
-    }
-
-    List<SearchHit> parseSogouResults(Document document, String query) {
-        List<SearchHit> hits = new ArrayList<>();
-        for (Element result : document.select("div.vrwrap")) {
-            Element link = result.selectFirst("h3.vr-title a[href], h3 a[href]");
-            if (link == null) {
-                continue;
-            }
-
-            String title = normalizeWhitespace(link.text());
-            String url = resolveSogouResultUrl(result, link);
-            if (!StringUtils.hasText(title) || !StringUtils.hasText(url)) {
-                continue;
-            }
-
-            String snippet = normalizeWhitespace(result.select(".fz-mid.space-txt, .b_caption p, p.star-wiki").text());
-            if (!StringUtils.hasText(snippet)) {
-                snippet = normalizeWhitespace(result.select(".citeLinkClass").text());
-            }
-
-            String normalizedUrl = normalizeUrl(url);
-            if (!StringUtils.hasText(normalizedUrl)) {
-                continue;
-            }
-
-            hits.add(new SearchHit(title, normalizedUrl, snippet, query));
-            if (hits.size() >= maxExternalResultsPerQuery) {
-                break;
-            }
-        }
-        return hits;
-    }
-
-    private String resolveSogouResultUrl(Element result, Element link) {
-        String canonicalUrl = extractSogouCanonicalUrl(result);
-        if (StringUtils.hasText(canonicalUrl)) {
-            String normalizedCanonicalUrl = normalizeUrl(canonicalUrl);
-            if (StringUtils.hasText(normalizedCanonicalUrl)) {
-                return normalizedCanonicalUrl;
-            }
-        }
-        if (link == null) {
-            return null;
-        }
-        return normalizeUrl(resolveSogouUrl(link.attr("href")));
-    }
-
-    private String extractSogouCanonicalUrl(Element result) {
-        if (result == null) {
-            return null;
-        }
-        Element canonicalElement = result.selectFirst(".r-sech[data-url], .ext_query[data-url], .result_list[data-url], [data-url]");
-        if (canonicalElement != null && StringUtils.hasText(canonicalElement.attr("data-url"))) {
-            return canonicalElement.attr("data-url");
-        }
-        Element citeLink = result.selectFirst("a.citeLinkClass[href]");
-        if (citeLink != null) {
-            String decoded = decodeRedirectUrl(citeLink.attr("href"));
-            if (StringUtils.hasText(decoded)) {
-                return decoded;
-            }
-        }
-        return null;
-    }
-
-    List<SearchHit> searchBing(String originalQuery, String searchQuery) {
-        try {
-            Document document = Jsoup.connect("https://cn.bing.com/search")
-                    .data("q", searchQuery)
-                    .userAgent(userAgent)
-                    .timeout(timeoutMs)
-                    .referrer("https://www.bing.com/")
-                    .get();
-
-            return parseBingResults(document, originalQuery);
-        } catch (IOException exception) {
-            return List.of();
-        }
-    }
-
-    List<SearchHit> parseBingResults(Document document, String query) {
-        List<SearchHit> hits = new ArrayList<>();
-        for (Element result : document.select("li.b_algo")) {
-            Element link = result.selectFirst("h2 a[href]");
-            if (link == null) {
-                continue;
-            }
-
-            String title = normalizeWhitespace(link.text());
-            String url = decodeRedirectUrl(link.attr("href"));
-            if (!StringUtils.hasText(title) || !StringUtils.hasText(url)) {
-                continue;
-            }
-
-            String snippet = normalizeWhitespace(result.select(".b_caption p, .b_caption .b_lineclamp2").text());
-            String normalizedUrl = normalizeUrl(url);
-            if (!StringUtils.hasText(normalizedUrl)) {
-                continue;
-            }
-
-            hits.add(new SearchHit(title, normalizedUrl, snippet, query));
-            if (hits.size() >= maxExternalResultsPerQuery) {
-                break;
-            }
-        }
-        return hits;
-    }
-
-    private List<SearchHit> searchDuckDuckGo(String originalQuery, String searchQuery) {
-        try {
-            Document document = Jsoup.connect("https://html.duckduckgo.com/html/")
-                    .data("q", searchQuery)
-                    .data("kl", "cn-zh")
-                    .userAgent(userAgent)
-                    .timeout(timeoutMs)
-                    .referrer("https://duckduckgo.com/")
-                    .get();
-
-            List<SearchHit> hits = new ArrayList<>();
-            for (Element result : document.select(".result")) {
-                Element link = result.selectFirst("a.result__a");
-                if (link == null) {
-                    continue;
+        for (SearchProvider provider : searchProviders) {
+            try {
+                List<SearchHit> hits = provider.search(originalQuery, searchQuery);
+                if (!hits.isEmpty()) {
+                    return hits;
                 }
-                String title = normalizeWhitespace(link.text());
-                String url = decodeRedirectUrl(link.attr("href"));
-                if (!StringUtils.hasText(title) || !StringUtils.hasText(url)) {
-                    continue;
-                }
-
-                String snippet = normalizeWhitespace(result.select(".result__snippet").text());
-                String normalizedUrl = normalizeUrl(url);
-                if (!StringUtils.hasText(normalizedUrl)) {
-                    continue;
-                }
-
-                hits.add(new SearchHit(title, normalizedUrl, snippet, originalQuery));
-                if (hits.size() >= maxExternalResultsPerQuery) {
-                    break;
-                }
+            } catch (RuntimeException exception) {
+                log.warn("Search provider {} failed: {}", provider.name(), exception.getMessage());
             }
-            return hits;
-        } catch (IOException exception) {
-            return List.of();
         }
-    }
-
-    private String resolveSogouUrl(String href) {
-        if (!StringUtils.hasText(href)) {
-            return null;
-        }
-        String trimmed = href.trim();
-        if (trimmed.startsWith("//")) {
-            trimmed = "https:" + trimmed;
-        }
-        if (trimmed.startsWith("/")) {
-            trimmed = "https://www.sogou.com" + trimmed;
-        }
-        return decodeRedirectUrl(trimmed);
-    }
-
-    private String decodeRedirectUrl(String href) {
-        if (!StringUtils.hasText(href)) {
-            return null;
-        }
-        String candidate = href.startsWith("//") ? "https:" + href : href;
-        try {
-            URI uri = new URI(candidate);
-            if (uri.getHost() != null && uri.getHost().contains("sogou.com") && StringUtils.hasText(uri.getPath()) && uri.getPath().contains("/link")) {
-                String query = uri.getRawQuery();
-                if (query != null) {
-                    for (String part : query.split("&")) {
-                        String[] kv = part.split("=", 2);
-                        if (kv.length == 2 && ("url".equals(kv[0]) || "u".equals(kv[0]) || "target".equals(kv[0]))) {
-                            String decoded = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
-                            if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
-                                return decoded;
-                            }
-                        }
-                    }
-                }
-            }
-            if (uri.getHost() != null && (uri.getHost().contains("duckduckgo.com") || uri.getHost().contains("bing.com"))) {
-                String query = uri.getRawQuery();
-                if (query != null) {
-                    for (String part : query.split("&")) {
-                        String[] kv = part.split("=", 2);
-                        if (kv.length == 2 && ("uddg".equals(kv[0]) || "u".equals(kv[0]) || "url".equals(kv[0]))) {
-                            return URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
-                        }
-                    }
-                }
-            }
-            return candidate;
-        } catch (URISyntaxException exception) {
-            return candidate;
-        }
-    }
-
-    private String normalizeUrl(String rawUrl) {
-        if (!StringUtils.hasText(rawUrl)) {
-            return null;
-        }
-        try {
-            URI uri = new URI(rawUrl.trim());
-            String scheme = uri.getScheme();
-            String host = uri.getHost();
-            if (!StringUtils.hasText(host)) {
-                return rawUrl.trim();
-            }
-            String normalizedScheme = StringUtils.hasText(scheme) ? scheme.toLowerCase(Locale.ROOT) : "https";
-            String normalizedHost = host.toLowerCase(Locale.ROOT);
-            String path = uri.getPath() == null ? "" : uri.getPath();
-            String query = uri.getQuery();
-            URI normalized = new URI(normalizedScheme, uri.getUserInfo(), normalizedHost, uri.getPort(), path, query, null);
-            return normalized.toString();
-        } catch (URISyntaxException exception) {
-            return rawUrl.trim();
-        }
+        return List.of();
     }
 
     boolean isRelevantHit(String query, String title, String snippet, String url) {
@@ -585,11 +351,9 @@ public class ExternalRetrievalService {
         record.setDocumentId(evidence.getDocumentId());
         record.setChunkId(evidence.getChunkId());
         record.setScore(evidence.getScore());
+        record.setRetrievalStrategy("external_web");
         record.setCreatedAt(Instant.now());
         return record;
-    }
-
-    record SearchHit(String title, String normalizedUrl, String snippet, String query) {
     }
 
     record QuerySignal(String text, boolean strong, boolean domain) {

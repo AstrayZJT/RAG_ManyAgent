@@ -1,0 +1,22 @@
+[
+  {"id":"byd-component-self-supply","category":"LEXICAL","query":"比亚迪垂直整合哪些核心零部件来降低成本","expectedContentContains":"垂直整合降低核心零部件采购成本"},
+  {"id":"byd-semantic-control","category":"SEMANTIC","query":"谁把关键硬件掌握在自己手里来压低造车开支","expectedContentContains":"垂直整合降低核心零部件采购成本"},
+  {"id":"tesla-remote-upgrade","category":"LEXICAL","query":"特斯拉如何通过 OTA 持续增加车辆功能","expectedContentContains":"通过 OTA 更新增加功能"},
+  {"id":"tesla-semantic-phone","category":"SEMANTIC","query":"哪种车能像智能手机一样在交付后继续获得新能力","expectedContentContains":"通过 OTA 更新增加功能"},
+  {"id":"li-auto-range-extender","category":"LEXICAL","query":"理想汽车的增程路线如何缓解续航焦虑","expectedContentContains":"由发动机发电，缓解用户对续航和补能的焦虑"},
+  {"id":"li-auto-semantic-energy","category":"SEMANTIC","query":"日常接电通勤而远行时改用燃油供能的家庭方案","expectedContentContains":"由发动机发电，缓解用户对续航和补能的焦虑"},
+  {"id":"battery-thermal-stability","category":"LEXICAL","query":"磷酸铁锂和三元锂在热稳定性与能量密度上有什么区别","expectedContentContains":"磷酸铁锂电池通常热稳定性更好"},
+  {"id":"battery-semantic-safety","category":"SEMANTIC","query":"更在意不起火和耐久而不是单位重量续航时应该关注什么技术路线","expectedContentContains":"磷酸铁锂电池通常热稳定性更好"},
+  {"id":"charging-network-quality","category":"LEXICAL","query":"公共充电网络为什么要关注设备可用率和单桩利用率","expectedContentContains":"设备可用率、排队时间和单桩利用率"},
+  {"id":"charging-semantic-queue","category":"SEMANTIC","query":"为什么建了很多补能设备，用户仍然可能排长队并且无法使用","expectedContentContains":"设备可用率、排队时间和单桩利用率"},
+  {"id":"policy-dual-credit","category":"LEXICAL","query":"双积分政策怎样约束车企调整产品结构","expectedContentContains":"新能源汽车积分约束车企产品结构"},
+  {"id":"policy-semantic-transition","category":"SEMANTIC","query":"行业扶持从给买家发现金转向了哪些长期管理手段","expectedContentContains":"从直接购车补贴转向税收支持、双积分"},
+  {"id":"export-europe-risk","category":"LEXICAL","query":"欧洲关税和贸易调查如何影响新能源汽车出口成本","expectedContentContains":"欧洲关税与贸易调查会改变出口成本"},
+  {"id":"export-semantic-local","category":"SEMANTIC","query":"车企怎样从把产品装船卖到国外升级为在当地长期经营","expectedContentContains":"海外工厂、销售渠道、售后配件和本地认证共同支撑"},
+  {"id":"price-war-metrics","category":"LEXICAL","query":"判断汽车降价是否有效应该观察哪些经营指标","expectedContentContains":"订单转化、交付量、单车毛利、渠道库存和现金流"},
+  {"id":"price-semantic-profit","category":"SEMANTIC","query":"为什么订单增加以后每辆车赚得更少，而且旧款还卖不掉","expectedContentContains":"压低单车毛利并增加老车型库存压力"},
+  {"id":"driving-responsibility","category":"LEXICAL","query":"使用量产辅助驾驶时驾驶责任能否完全交给车辆","expectedContentContains":"驾驶员不能把动态驾驶责任完全交给车辆"},
+  {"id":"driving-semantic-hands-off","category":"SEMANTIC","query":"系统正在控制汽车时，人是不是就可以彻底撒手不管","expectedContentContains":"驾驶员不能把动态驾驶责任完全交给车辆"},
+  {"id":"used-car-valuation","category":"LEXICAL","query":"新能源二手车估值为什么依赖动力电池健康度","expectedContentContains":"依赖动力电池健康度、剩余质保"},
+  {"id":"used-car-semantic-price-cut","category":"SEMANTIC","query":"为什么新产品突然便宜会让已经上路的旧车更不值钱","expectedContentContains":"新车频繁降价会传导到二手车残值"}
+]

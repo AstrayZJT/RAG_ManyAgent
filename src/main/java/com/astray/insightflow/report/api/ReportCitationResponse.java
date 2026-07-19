@@ -10,7 +10,17 @@ public record ReportCitationResponse(
         String sourceType,
         String documentId,
         String chunkId,
-        double score
+        String documentHash,
+        String chunkHash,
+        Integer chunkIndex,
+        Integer startOffset,
+        Integer endOffset,
+        double score,
+        Double lexicalScore,
+        Double vectorScore,
+        Double titleBoost,
+        Double rerankScore,
+        String retrievalStrategy
 ) {
 
     public static ReportCitationResponse from(EvidenceRecord record) {
@@ -22,7 +32,17 @@ public record ReportCitationResponse(
                 record.getSourceType() == null ? null : record.getSourceType().name(),
                 record.getDocumentId(),
                 record.getChunkId(),
-                record.getScore()
+                record.getDocumentHash(),
+                record.getChunkHash(),
+                record.getChunkIndex(),
+                record.getStartOffset(),
+                record.getEndOffset(),
+                record.getScore(),
+                record.getLexicalScore(),
+                record.getVectorScore(),
+                record.getTitleBoost(),
+                record.getRerankScore(),
+                record.getRetrievalStrategy()
         );
     }
 }

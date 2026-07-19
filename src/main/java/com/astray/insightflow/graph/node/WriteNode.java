@@ -8,6 +8,7 @@ import com.astray.insightflow.graph.state.ResearchState;
 import com.astray.insightflow.observe.service.AgentRunLogService;
 import com.astray.insightflow.report.service.ReportService;
 import com.astray.insightflow.task.service.TaskProgressPublisher;
+import com.astray.insightflow.tool.CitationGuardTool;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -20,17 +21,20 @@ public class WriteNode {
 
     private final WriterAgent writerAgent;
     private final ReportService reportService;
+    private final CitationGuardTool citationGuardTool;
     private final JsonUtils jsonUtils;
     private final TaskProgressPublisher taskProgressPublisher;
     private final AgentRunLogService agentRunLogService;
 
     public WriteNode(WriterAgent writerAgent,
                      ReportService reportService,
+                     CitationGuardTool citationGuardTool,
                      JsonUtils jsonUtils,
                      TaskProgressPublisher taskProgressPublisher,
                      AgentRunLogService agentRunLogService) {
         this.writerAgent = writerAgent;
         this.reportService = reportService;
+        this.citationGuardTool = citationGuardTool;
         this.jsonUtils = jsonUtils;
         this.taskProgressPublisher = taskProgressPublisher;
         this.agentRunLogService = agentRunLogService;
@@ -47,11 +51,20 @@ public class WriteNode {
             String claimsJson = jsonUtils.toJson(Map.of("items", state.claims()));
             String evidenceJson = jsonUtils.toJson(Map.of("items", state.mergedEvidences()));
             ReportDraft draft = writerAgent.write(state.userQuery(), state.language(), planJson, claimsJson, evidenceJson);
+            CitationGuardTool.ReportValidationResult citationValidation = citationGuardTool.validateReportDraft(
+                    taskId,
+                    "write",
+                    draft,
+                    state.mergedEvidences()
+            );
+            draft = citationValidation.draft();
             reportService.save(taskId, draft);
 
             Map<String, Object> metrics = Map.of(
                     "tokenUsage", MetricsUtils.estimateTokens(planJson, claimsJson, evidenceJson),
-                    "citationCoverage", MetricsUtils.citationCoverage(state.claims())
+                    "citationCoverage", MetricsUtils.citationCoverage(state.claims()),
+                    "invalidCitationCount", citationValidation.invalidCitationCount(),
+                    "unsupportedSectionCount", citationValidation.unsupportedSectionCount()
             );
 
             Map<String, Object> output = new LinkedHashMap<>();

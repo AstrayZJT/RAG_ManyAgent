@@ -6,6 +6,8 @@ import com.astray.insightflow.agent.writer.ReportDraft;
 import com.astray.insightflow.agent.writer.ReportSection;
 import com.astray.insightflow.common.util.JsonUtils;
 import com.astray.insightflow.eval.api.EvaluationResponse;
+import com.astray.insightflow.eval.citation.CitationMetrics;
+import com.astray.insightflow.eval.citation.CitationMetricsCalculator;
 import com.astray.insightflow.eval.domain.EvaluationRecord;
 import com.astray.insightflow.eval.persistence.EvaluationRecordRepository;
 import com.astray.insightflow.graph.checkpoint.CheckpointService;
@@ -19,8 +21,11 @@ import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class EvaluationService {
@@ -30,17 +35,20 @@ public class EvaluationService {
     private final TaskService taskService;
     private final CheckpointService checkpointService;
     private final JsonUtils jsonUtils;
+    private final CitationMetricsCalculator citationMetricsCalculator;
 
     public EvaluationService(EvaluationRecordRepository evaluationRecordRepository,
                              EvidenceRecordRepository evidenceRecordRepository,
                              TaskService taskService,
                              CheckpointService checkpointService,
-                             JsonUtils jsonUtils) {
+                             JsonUtils jsonUtils,
+                             CitationMetricsCalculator citationMetricsCalculator) {
         this.evaluationRecordRepository = evaluationRecordRepository;
         this.evidenceRecordRepository = evidenceRecordRepository;
         this.taskService = taskService;
         this.checkpointService = checkpointService;
         this.jsonUtils = jsonUtils;
+        this.citationMetricsCalculator = citationMetricsCalculator;
     }
 
     @Transactional
@@ -60,9 +68,15 @@ public class EvaluationService {
 
         int subQueryCount = Math.max(1, plan.getSubQueries().size());
         double retrievalHitRate = clamp(mergedEvidenceCount / (double) subQueryCount);
-        double citationCoverage = clamp(latestState.claims().stream()
-                .filter(claim -> !claim.getSupportingEvidenceIds().isEmpty())
-                .count() / (double) Math.max(1, latestState.claims().size()));
+        Set<String> allowedEvidenceIds = evidenceRecordRepository.findByTaskIdOrderByScoreDescCreatedAtAsc(taskId).stream()
+                .map(com.astray.insightflow.retrieval.domain.EvidenceRecord::getId)
+                .collect(Collectors.toSet());
+        CitationMetrics citationMetrics = citationMetricsCalculator.calculate(
+                latestState.claims(),
+                reportDraft,
+                allowedEvidenceIds
+        );
+        double citationCoverage = clamp(citationMetrics.claimCoverage());
 
         long supportedClaims = latestState.claims().stream()
                 .filter(claim -> claim.getStatus() == VerifiedClaimStatus.SUPPORTED)
@@ -111,6 +125,11 @@ public class EvaluationService {
         details.put("reportTitle", reportDraft.getTitle());
         details.put("reviewSummary", latestState.reviewResult().getSummary());
         details.put("confidenceNote", reportDraft.getConfidenceNote());
+        details.put("reportCitationCoverage", citationMetrics.reportSectionCoverage());
+        details.put("citationValidityRate", citationMetrics.validityRate());
+        details.put("totalCitationCount", citationMetrics.totalCitationCount());
+        details.put("validCitationCount", citationMetrics.validCitationCount());
+        details.put("invalidCitationCount", citationMetrics.invalidCitationCount());
 
         EvaluationRecord record = new EvaluationRecord();
         record.setId(UUID.randomUUID().toString());

@@ -10,6 +10,8 @@ public record DocumentResponse(
         String mediaType,
         String status,
         String storagePath,
+        String contentHash,
+        String collectionName,
         Instant uploadedAt,
         Instant indexedAt,
         String errorMessage
@@ -22,6 +24,8 @@ public record DocumentResponse(
                 document.getMediaType(),
                 document.getStatus().name(),
                 document.getStoragePath(),
+                document.getContentHash(),
+                document.getCollectionName(),
                 document.getUploadedAt(),
                 document.getIndexedAt(),
                 document.getErrorMessage()

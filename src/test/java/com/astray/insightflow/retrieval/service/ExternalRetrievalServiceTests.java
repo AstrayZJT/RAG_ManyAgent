@@ -1,6 +1,9 @@
 package com.astray.insightflow.retrieval.service;
 
 import com.astray.insightflow.config.AgentProperties;
+import com.astray.insightflow.retrieval.model.Evidence;
+import com.astray.insightflow.retrieval.persistence.EvidenceRecordRepository;
+import com.astray.insightflow.tool.WebFetchTool;
 import org.jsoup.Jsoup;
 import org.junit.jupiter.api.Test;
 
@@ -9,17 +12,25 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ExternalRetrievalServiceTests {
 
+    private final AgentProperties agentProperties = new AgentProperties(
+            new AgentProperties.Search(5, 4, 8, 15000, "InsightFlow-Test"),
+            new AgentProperties.Webpage(8000, 240)
+    );
     private final ExternalRetrievalService service = new ExternalRetrievalService(
             null,
             null,
-            new AgentProperties(
-                    new AgentProperties.Search(5, 4, 8, 15000, "InsightFlow-Test"),
-                    new AgentProperties.Webpage(8000, 240)
-            )
+            agentProperties
     );
+    private final BingHtmlSearchProvider bingProvider = new BingHtmlSearchProvider(agentProperties);
+    private final SogouHtmlSearchProvider sogouProvider = new SogouHtmlSearchProvider(agentProperties);
 
     @Test
     void parseBingResultsExtractsSearchHits() {
@@ -40,7 +51,7 @@ class ExternalRetrievalServiceTests {
                 </html>
                 """;
 
-        List<ExternalRetrievalService.SearchHit> hits = service.parseBingResults(Jsoup.parse(html), "test query");
+        List<SearchHit> hits = bingProvider.parse(Jsoup.parse(html), "test query");
 
         assertEquals(2, hits.size());
         assertEquals("Example A", hits.get(0).title());
@@ -70,7 +81,7 @@ class ExternalRetrievalServiceTests {
                 </html>
                 """;
 
-        List<ExternalRetrievalService.SearchHit> hits = service.parseSogouResults(Jsoup.parse(html), "国家电网 发展历史");
+        List<SearchHit> hits = sogouProvider.parse(Jsoup.parse(html), "国家电网 发展历史");
 
         assertEquals(2, hits.size());
         assertEquals("国家电网公司历史沿革", hits.get(0).title());
@@ -131,11 +142,57 @@ class ExternalRetrievalServiceTests {
                 </html>
                 """;
 
-        List<ExternalRetrievalService.SearchHit> hits = service.parseSogouResults(Jsoup.parse(html), "demo query");
+        List<SearchHit> hits = sogouProvider.parse(Jsoup.parse(html), "demo query");
 
         assertEquals(1, hits.size());
         assertEquals("Redirected Title", hits.get(0).title());
         assertEquals("https://example.com/final-article", hits.get(0).normalizedUrl());
         assertEquals("Canonical snippet", hits.get(0).snippet());
+    }
+
+    @Test
+    void providerChainFallsBackToNextProvider() {
+        SearchProvider unavailableProvider = mock(SearchProvider.class);
+        SearchProvider successfulProvider = mock(SearchProvider.class);
+        SearchProvider unusedProvider = mock(SearchProvider.class);
+        WebFetchTool webFetchTool = mock(WebFetchTool.class);
+        EvidenceRecordRepository evidenceRepository = mock(EvidenceRecordRepository.class);
+
+        when(unavailableProvider.name()).thenReturn("unavailable");
+        when(unavailableProvider.search(anyString(), anyString())).thenReturn(List.of());
+        when(successfulProvider.name()).thenReturn("successful");
+        when(successfulProvider.search(anyString(), anyString())).thenReturn(List.of(
+                new SearchHit(
+                        "Tesla autonomy analysis",
+                        "https://example.com/tesla",
+                        "Tesla autonomy remains a major competitive advantage.",
+                        "Tesla autonomy"
+                )
+        ));
+        when(webFetchTool.fetchPage(anyString(), anyString(), anyString())).thenReturn(
+                new WebFetchTool.FetchedPage(
+                        "https://example.com/tesla",
+                        "Tesla autonomy analysis",
+                        "Tesla autonomy remains a major competitive advantage."
+                )
+        );
+
+        ExternalRetrievalService providerService = new ExternalRetrievalService(
+                webFetchTool,
+                evidenceRepository,
+                new AgentProperties(
+                        new AgentProperties.Search(5, 4, 8, 15000, "InsightFlow-Test"),
+                        new AgentProperties.Webpage(8000, 240)
+                ),
+                List.of(unavailableProvider, successfulProvider, unusedProvider)
+        );
+
+        List<Evidence> result = providerService.search("task-1", List.of("Tesla autonomy"), true);
+
+        assertEquals(1, result.size());
+        assertEquals("https://example.com/tesla", result.getFirst().getUrl());
+        verify(unavailableProvider).search("Tesla autonomy", "Tesla autonomy");
+        verify(successfulProvider).search("Tesla autonomy", "Tesla autonomy");
+        verify(unusedProvider, never()).search(anyString(), anyString());
     }
 }

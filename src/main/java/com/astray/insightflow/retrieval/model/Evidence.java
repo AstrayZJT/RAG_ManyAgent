@@ -13,7 +13,13 @@ public class Evidence implements Serializable {
     private EvidenceSourceType sourceType;
     private String documentId;
     private String chunkId;
+    private String documentHash;
+    private String chunkHash;
+    private Integer chunkIndex;
+    private Integer startOffset;
+    private Integer endOffset;
     private double score;
+    private EvidenceScoreBreakdown scoreBreakdown;
 
     public Evidence() {
     }
@@ -86,11 +92,59 @@ public class Evidence implements Serializable {
         this.chunkId = chunkId;
     }
 
+    public String getDocumentHash() {
+        return documentHash;
+    }
+
+    public void setDocumentHash(String documentHash) {
+        this.documentHash = documentHash;
+    }
+
+    public String getChunkHash() {
+        return chunkHash;
+    }
+
+    public void setChunkHash(String chunkHash) {
+        this.chunkHash = chunkHash;
+    }
+
+    public Integer getChunkIndex() {
+        return chunkIndex;
+    }
+
+    public void setChunkIndex(Integer chunkIndex) {
+        this.chunkIndex = chunkIndex;
+    }
+
+    public Integer getStartOffset() {
+        return startOffset;
+    }
+
+    public void setStartOffset(Integer startOffset) {
+        this.startOffset = startOffset;
+    }
+
+    public Integer getEndOffset() {
+        return endOffset;
+    }
+
+    public void setEndOffset(Integer endOffset) {
+        this.endOffset = endOffset;
+    }
+
     public double getScore() {
         return score;
     }
 
     public void setScore(double score) {
         this.score = score;
+    }
+
+    public EvidenceScoreBreakdown getScoreBreakdown() {
+        return scoreBreakdown;
+    }
+
+    public void setScoreBreakdown(EvidenceScoreBreakdown scoreBreakdown) {
+        this.scoreBreakdown = scoreBreakdown;
     }
 }
